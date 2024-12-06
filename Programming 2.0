@@ -200,39 +200,54 @@ def analyze_office_space_utilization(final_df_with_day_name):
     Returns:
         dict: Comprehensive analysis results
     """
+    # Ensure numeric types
+    final_df_with_day_name['DISTINCT_SWIPE_COUNT'] = pd.to_numeric(final_df_with_day_name['DISTINCT_SWIPE_COUNT'], errors='coerce')
+    final_df_with_day_name['NUMBER_OF_SEATS'] = pd.to_numeric(final_df_with_day_name['NUMBER_OF_SEATS'], errors='coerce')
+    
     # Analysis Metrics
     results = {}
     
     # 1. Overall Occupancy Analysis
     results['total_days_tracked'] = len(final_df_with_day_name)
     results['average_daily_occupancy'] = final_df_with_day_name['DISTINCT_SWIPE_COUNT'].mean()
-    results['average_seat_utilization'] = results['average_daily_occupancy'] / final_df_with_day_name['NUMBER_OF_SEATS'].iloc[0] * 100
+    
+    # Safely handle seat count
+    total_seats = final_df_with_day_name['NUMBER_OF_SEATS'].iloc[0]
+    if pd.notna(total_seats) and total_seats != 0:
+        results['average_seat_utilization'] = (results['average_daily_occupancy'] / total_seats) * 100
+    else:
+        results['average_seat_utilization'] = 0
     
     # 2. Day of Week Analysis
     day_of_week_analysis = final_df_with_day_name.groupby('DAY_NAME')['DISTINCT_SWIPE_COUNT'].agg(['mean', 'count']).reset_index()
-    day_of_week_analysis['utilization_percentage'] = day_of_week_analysis['mean'] / final_df_with_day_name['NUMBER_OF_SEATS'].iloc[0] * 100
+    
+    # Safely calculate utilization percentage
+    if pd.notna(total_seats) and total_seats != 0:
+        day_of_week_analysis['utilization_percentage'] = day_of_week_analysis['mean'] / total_seats * 100
+    else:
+        day_of_week_analysis['utilization_percentage'] = 0
+    
     results['day_of_week_analysis'] = day_of_week_analysis
     
     # 3. Capacity Planning
     target_utilization = 0.80  # 80% target
-    current_total_seats = final_df_with_day_name['NUMBER_OF_SEATS'].iloc[0]
     
     # Calculate optimal seat count based on 80% utilization
-    results['optimal_seat_count'] = int(results['average_daily_occupancy'] / target_utilization)
-    results['potential_seat_reduction'] = max(0, current_total_seats - results['optimal_seat_count'])
+    results['optimal_seat_count'] = int(results['average_daily_occupancy'] / target_utilization) if results['average_daily_occupancy'] > 0 else 0
+    results['potential_seat_reduction'] = max(0, total_seats - results['optimal_seat_count']) if pd.notna(total_seats) else 0
     
     # 4. Overcapacity Analysis
-    overcapacity_days = final_df_with_day_name[final_df_with_day_name['DISTINCT_SWIPE_COUNT'] > current_total_seats]
+    overcapacity_days = final_df_with_day_name[final_df_with_day_name['DISTINCT_SWIPE_COUNT'] > total_seats]
     results['overcapacity_days_count'] = len(overcapacity_days)
-    results['overcapacity_percentage'] = len(overcapacity_days) / len(final_df_with_day_name) * 100
+    results['overcapacity_percentage'] = len(overcapacity_days) / len(final_df_with_day_name) * 100 if len(final_df_with_day_name) > 0 else 0
     
     # 5. Peak Usage Analysis
     results['peak_usage'] = final_df_with_day_name['DISTINCT_SWIPE_COUNT'].max()
-    results['peak_usage_percentage'] = results['peak_usage'] / current_total_seats * 100
+    results['peak_usage_percentage'] = results['peak_usage'] / total_seats * 100 if pd.notna(total_seats) and total_seats != 0 else 0
     
     # 6. Variability in Usage
     results['usage_standard_deviation'] = final_df_with_day_name['DISTINCT_SWIPE_COUNT'].std()
-    results['coefficient_of_variation'] = results['usage_standard_deviation'] / results['average_daily_occupancy'] * 100
+    results['coefficient_of_variation'] = results['usage_standard_deviation'] / results['average_daily_occupancy'] * 100 if results['average_daily_occupancy'] > 0 else 0
     
     return results
 
@@ -300,34 +315,26 @@ def generate_space_optimization_report(results):
 - **Average Seat Utilization**: {results['average_seat_utilization']:.2f}%
 
 ## Capacity Planning
-- **Current Total Seats**: {results['optimal_seat_count']}
-- **Potential Seat Reduction**: {results['potential_seat_reduction']}
-- **Recommended Optimal Seat Count**: {results['optimal_seat_count']}
+- **Current Total Seats**: {results.get('optimal_seat_count', 'N/A')}
+- **Potential Seat Reduction**: {results.get('potential_seat_reduction', 'N/A')}
+- **Recommended Optimal Seat Count**: {results.get('optimal_seat_count', 'N/A')}
 
 ## Overcapacity Analysis
-- **Overcapacity Days**: {results['overcapacity_days_count']}
-- **Overcapacity Percentage**: {results['overcapacity_percentage']:.2f}%
+- **Overcapacity Days**: {results.get('overcapacity_days_count', 'N/A')}
+- **Overcapacity Percentage**: {results.get('overcapacity_percentage', 'N/A'):.2f}%
 
 ## Usage Variability
-- **Peak Usage**: {results['peak_usage']}
-- **Peak Usage Percentage**: {results['peak_usage_percentage']:.2f}%
-- **Usage Standard Deviation**: {results['usage_standard_deviation']:.2f}
-- **Coefficient of Variation**: {results['coefficient_of_variation']:.2f}%
+- **Peak Usage**: {results.get('peak_usage', 'N/A')}
+- **Peak Usage Percentage**: {results.get('peak_usage_percentage', 'N/A'):.2f}%
+- **Usage Standard Deviation**: {results.get('usage_standard_deviation', 'N/A'):.2f}
+- **Coefficient of Variation**: {results.get('coefficient_of_variation', 'N/A'):.2f}%
 
 ## Recommendations
-1. Consider reducing total seats by {results['potential_seat_reduction']} to optimize space utilization
+1. Consider reducing total seats by {results.get('potential_seat_reduction', 'N/A')} to optimize space utilization
 2. Focus on days with lower utilization for potential space reallocation
-3. Investigate reasons for overcapacity on {results['overcapacity_days_count']} days
+3. Investigate reasons for overcapacity on {results.get('overcapacity_days_count', 'N/A')} days
 """
     return report
-
-# Example usage (commented out as this would be integrated with your existing script)
-# results = analyze_office_space_utilization(final_df_with_day_name)
-# visualize_office_utilization(final_df_with_day_name, results)
-# report = generate_space_optimization_report(results)
-# print(report)
-
-
 
 ------
 
