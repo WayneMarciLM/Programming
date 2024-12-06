@@ -443,57 +443,20 @@ if ts_decomposition:
 --------------
 
 
-def prepare_time_series_data(final_df_with_day_name, original_seats_df):
-    """
-    Prepare time series data for predictive modeling
-    
-    Args:
-        final_df_with_day_name (pd.DataFrame): DataFrame with daily occupancy data
-        original_seats_df (pd.DataFrame): Original dataframe with seat information
-    
-    Returns:
-        pd.DataFrame: Prepared time series dataframe
-    """
-    # Group by date and calculate mean daily occupancy
-    daily_occupancy = final_df_with_day_name.groupby('DATE')['DISTINCT_SWIPE_COUNT'].mean().reset_index()
-    daily_occupancy.set_index('DATE', inplace=True)
-    daily_occupancy.sort_index(inplace=True)
-    
-    # Extract total seats (assuming consistent across the dataset)
-    try:
-        total_seats = original_seats_df['NUMBER_OF_SEATS'].iloc[0]
-        daily_occupancy['NUMBER_OF_SEATS'] = total_seats
-    except Exception as e:
-        print(f"Warning: Could not extract seat count. Using default. Error: {e}")
-        daily_occupancy['NUMBER_OF_SEATS'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].max()
-    
-    # Create lag features and rolling statistics
-    daily_occupancy['lag_1'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].shift(1)
-    daily_occupancy['lag_7'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].shift(7)
-    daily_occupancy['rolling_mean_7'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].rolling(window=7).mean()
-    daily_occupancy['rolling_std_7'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].rolling(window=7).std()
-    
-    # Add cyclical time features
-    daily_occupancy['day_of_week'] = daily_occupancy.index.dayofweek
-    daily_occupancy['month'] = daily_occupancy.index.month
-    
-    # Drop NaN rows created by lag and rolling features
-    daily_occupancy.dropna(inplace=True)
-    
-    return daily_occupancy
-
-def predictive_occupancy_modeling(final_df_with_day_name):
+def predictive_occupancy_modeling(final_df_with_day_name, office_df):
     """
     Implement multiple predictive modeling techniques for office occupancy
     
     Args:
         final_df_with_day_name (pd.DataFrame): DataFrame with daily occupancy data
+        office_df (pd.DataFrame): DataFrame with seat information
     
     Returns:
         dict: Predictive modeling results and evaluations
     """
     import numpy as np
     import pandas as pd
+    import matplotlib.pyplot as plt
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -503,7 +466,6 @@ def predictive_occupancy_modeling(final_df_with_day_name):
     from statsmodels.tsa.arima.model import ARIMA
     
     # Prepare time series data
-    # Note: You'll need to pass the original office_df that contains the seat count
     daily_occupancy = prepare_time_series_data(final_df_with_day_name, office_df)
     
     # Prepare features and target
@@ -572,7 +534,7 @@ def predictive_occupancy_modeling(final_df_with_day_name):
     ensemble_pred = np.mean(list(ensemble_predictions.values()), axis=0)
     
     # Overcapacity Likelihood
-    seats_total = daily_occupancy['NUMBER_OF_SEATS'].iloc[0]  # Assumes consistent seat count
+    seats_total = float(daily_occupancy['NUMBER_OF_SEATS'].iloc[0])  # Explicitly convert to float
     overcapacity_threshold = seats_total * 0.9  # 90% utilization threshold
     
     model_results['Overcapacity Analysis'] = {
@@ -625,46 +587,4 @@ def predictive_occupancy_modeling(final_df_with_day_name):
     }
 
 # Run the predictive modeling
-predictive_results = predictive_occupancy_modeling(final_df_with_day_name)
-
-# Print out key insights
-print("\n--- Predictive Modeling Insights ---")
-print("\nModel Performance:")
-for model, metrics in predictive_results['model_performance'].items():
-    print(f"\n{model}:")
-    for metric, value in metrics.items():
-        print(f"{metric}: {value}")
-
-
-
-
-#error
-
-
-
-
-19:34:45 - cmdstanpy - INFO - Chain [1] start processing
-19:34:45 - cmdstanpy - INFO - Chain [1] done processing
-
-TypeError: unsupported operand type(s) for *: 'decimal.Decimal' and 'float'
----------------------------------------------------------------------------
-TypeError                                 Traceback (most recent call last)
-File <command-3792999931981891>, line 183
-    173     return {
-    174         'model_performance': model_results,
-    175         'prophet_forecast': forecast,
-   (...)
-    179         }
-    180     }
-    182 # Run the predictive modeling
---> 183 predictive_results = predictive_occupancy_modeling(final_df_with_day_name)
-    185 # Print out key insights
-    186 print("\n--- Predictive Modeling Insights ---")
-
-File <command-3792999931981891>, line 131, in predictive_occupancy_modeling(final_df_with_day_name)
-    129 # Overcapacity Likelihood
-    130 seats_total = daily_occupancy['NUMBER_OF_SEATS'].iloc[0]  # Assumes consistent seat count
---> 131 overcapacity_threshold = seats_total * 0.9  # 90% utilization threshold
-    133 model_results['Overcapacity Analysis'] = {
-    134     'Total Seats': seats_total,
-    135     'Overcapacity Probability': np.mean(y_pred > overcapacity_threshold),
+predictive_results = predictive_occupancy_modeling(final_df_with_day_name, office_df)
