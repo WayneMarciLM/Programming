@@ -181,3 +181,148 @@ final_df_with_day_name.drop(columns=['CALENDAR_DATE'], inplace=True)
 print(final_df_with_day_name)
 
 
+-----------
+
+#  deeper analysis
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def analyze_office_space_utilization(final_df_with_day_name):
+    """
+    Comprehensive analysis of office space utilization
+    
+    Args:
+        final_df_with_day_name (pd.DataFrame): DataFrame with occupancy data
+    
+    Returns:
+        dict: Comprehensive analysis results
+    """
+    # Analysis Metrics
+    results = {}
+    
+    # 1. Overall Occupancy Analysis
+    results['total_days_tracked'] = len(final_df_with_day_name)
+    results['average_daily_occupancy'] = final_df_with_day_name['DISTINCT_SWIPE_COUNT'].mean()
+    results['average_seat_utilization'] = results['average_daily_occupancy'] / final_df_with_day_name['NUMBER_OF_SEATS'].iloc[0] * 100
+    
+    # 2. Day of Week Analysis
+    day_of_week_analysis = final_df_with_day_name.groupby('DAY_NAME')['DISTINCT_SWIPE_COUNT'].agg(['mean', 'count']).reset_index()
+    day_of_week_analysis['utilization_percentage'] = day_of_week_analysis['mean'] / final_df_with_day_name['NUMBER_OF_SEATS'].iloc[0] * 100
+    results['day_of_week_analysis'] = day_of_week_analysis
+    
+    # 3. Capacity Planning
+    target_utilization = 0.80  # 80% target
+    current_total_seats = final_df_with_day_name['NUMBER_OF_SEATS'].iloc[0]
+    
+    # Calculate optimal seat count based on 80% utilization
+    results['optimal_seat_count'] = int(results['average_daily_occupancy'] / target_utilization)
+    results['potential_seat_reduction'] = max(0, current_total_seats - results['optimal_seat_count'])
+    
+    # 4. Overcapacity Analysis
+    overcapacity_days = final_df_with_day_name[final_df_with_day_name['DISTINCT_SWIPE_COUNT'] > current_total_seats]
+    results['overcapacity_days_count'] = len(overcapacity_days)
+    results['overcapacity_percentage'] = len(overcapacity_days) / len(final_df_with_day_name) * 100
+    
+    # 5. Peak Usage Analysis
+    results['peak_usage'] = final_df_with_day_name['DISTINCT_SWIPE_COUNT'].max()
+    results['peak_usage_percentage'] = results['peak_usage'] / current_total_seats * 100
+    
+    # 6. Variability in Usage
+    results['usage_standard_deviation'] = final_df_with_day_name['DISTINCT_SWIPE_COUNT'].std()
+    results['coefficient_of_variation'] = results['usage_standard_deviation'] / results['average_daily_occupancy'] * 100
+    
+    return results
+
+def visualize_office_utilization(final_df_with_day_name, results):
+    """
+    Create visualizations for office space utilization
+    
+    Args:
+        final_df_with_day_name (pd.DataFrame): DataFrame with occupancy data
+        results (dict): Analysis results from analyze_office_space_utilization
+    """
+    plt.figure(figsize=(15, 10))
+    
+    # Day of Week Utilization
+    plt.subplot(2, 2, 1)
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    day_analysis = results['day_of_week_analysis'].set_index('DAY_NAME')
+    day_analysis = day_analysis.reindex(day_order)
+    day_analysis['utilization_percentage'].plot(kind='bar')
+    plt.title('Daily Utilization Percentage')
+    plt.xlabel('Day of Week')
+    plt.ylabel('Utilization %')
+    plt.xticks(rotation=45)
+    
+    # Daily Occupancy Distribution
+    plt.subplot(2, 2, 2)
+    final_df_with_day_name['DISTINCT_SWIPE_COUNT'].hist(bins=20)
+    plt.title('Distribution of Daily Occupancy')
+    plt.xlabel('Number of Occupants')
+    plt.ylabel('Frequency')
+    
+    # Box Plot of Occupancy by Day
+    plt.subplot(2, 2, 3)
+    sns.boxplot(x='DAY_NAME', y='DISTINCT_SWIPE_COUNT', data=final_df_with_day_name, order=day_order)
+    plt.title('Occupancy Distribution by Day')
+    plt.xlabel('Day of Week')
+    plt.ylabel('Number of Occupants')
+    plt.xticks(rotation=45)
+    
+    # Seat Capacity vs Actual Usage
+    plt.subplot(2, 2, 4)
+    plt.scatter(final_df_with_day_name['NUMBER_OF_SEATS'], final_df_with_day_name['DISTINCT_SWIPE_COUNT'])
+    plt.title('Seat Capacity vs Actual Usage')
+    plt.xlabel('Total Seats')
+    plt.ylabel('Actual Occupancy')
+    
+    plt.tight_layout()
+    plt.show()
+
+def generate_space_optimization_report(results):
+    """
+    Generate a detailed report on space optimization opportunities
+    
+    Args:
+        results (dict): Analysis results from analyze_office_space_utilization
+    
+    Returns:
+        str: Detailed markdown report
+    """
+    report = f"""# Office Space Utilization Report
+
+## Key Metrics
+- **Total Days Tracked**: {results['total_days_tracked']}
+- **Average Daily Occupancy**: {results['average_daily_occupancy']:.2f}
+- **Average Seat Utilization**: {results['average_seat_utilization']:.2f}%
+
+## Capacity Planning
+- **Current Total Seats**: {results['optimal_seat_count']}
+- **Potential Seat Reduction**: {results['potential_seat_reduction']}
+- **Recommended Optimal Seat Count**: {results['optimal_seat_count']}
+
+## Overcapacity Analysis
+- **Overcapacity Days**: {results['overcapacity_days_count']}
+- **Overcapacity Percentage**: {results['overcapacity_percentage']:.2f}%
+
+## Usage Variability
+- **Peak Usage**: {results['peak_usage']}
+- **Peak Usage Percentage**: {results['peak_usage_percentage']:.2f}%
+- **Usage Standard Deviation**: {results['usage_standard_deviation']:.2f}
+- **Coefficient of Variation**: {results['coefficient_of_variation']:.2f}%
+
+## Recommendations
+1. Consider reducing total seats by {results['potential_seat_reduction']} to optimize space utilization
+2. Focus on days with lower utilization for potential space reallocation
+3. Investigate reasons for overcapacity on {results['overcapacity_days_count']} days
+"""
+    return report
+
+# Example usage (commented out as this would be integrated with your existing script)
+# results = analyze_office_space_utilization(final_df_with_day_name)
+# visualize_office_utilization(final_df_with_day_name, results)
+# report = generate_space_optimization_report(results)
+# print(report)
