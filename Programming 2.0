@@ -625,3 +625,64 @@ for model, metrics in predictive_results['model_performance'].items():
         print(f"{metric}: {value}")
 
 # Optional: Detailed forecast analysis can be added here
+
+
+--------------
+
+#error
+
+
+
+
+19:30:36 - cmdstanpy - INFO - Chain [1] start processing
+19:30:36 - cmdstanpy - INFO - Chain [1] done processing
+
+KeyError: 'NUMBER_OF_SEATS'
+File /databricks/python/lib/python3.12/site-packages/pandas/core/indexes/base.py:3802, in Index.get_loc(self, key, method, tolerance)
+   3801 try:
+-> 3802     return self._engine.get_loc(casted_key)
+   3803 except KeyError as err:
+File /databricks/python/lib/python3.12/site-packages/pandas/_libs/index.pyx:138, in pandas._libs.index.IndexEngine.get_loc()
+File /databricks/python/lib/python3.12/site-packages/pandas/_libs/index.pyx:165, in pandas._libs.index.IndexEngine.get_loc()
+File pandas/_libs/hashtable_class_helper.pxi:5745, in pandas._libs.hashtable.PyObjectHashTable.get_item()
+File pandas/_libs/hashtable_class_helper.pxi:5753, in pandas._libs.hashtable.PyObjectHashTable.get_item()
+KeyError: 'NUMBER_OF_SEATS'
+
+The above exception was the direct cause of the following exception:
+KeyError                                  Traceback (most recent call last)
+File <command-3792999931981891>, line 172
+    162     return {
+    163         'model_performance': model_results,
+    164         'prophet_forecast': forecast,
+   (...)
+    168         }
+    169     }
+    171 # Run the predictive modeling
+--> 172 predictive_results = predictive_occupancy_modeling(final_df_with_day_name)
+    174 # Print out key insights
+    175 print("\n--- Predictive Modeling Insights ---")
+File <command-3792999931981891>, line 120, in predictive_occupancy_modeling(final_df_with_day_name)
+    117 ensemble_pred = np.mean(list(ensemble_predictions.values()), axis=0)
+    119 # Overcapacity Likelihood
+--> 120 seats_total = daily_occupancy['NUMBER_OF_SEATS'].iloc[0]  # Assumes consistent seat count
+    121 overcapacity_threshold = seats_total * 0.9  # 90% utilization threshold
+    123 model_results['Overcapacity Analysis'] = {
+    124     'Overcapacity Probability': np.mean(y_pred > overcapacity_threshold),
+    125     'Average Predicted Occupancy': np.mean(y_pred),
+    126     'Max Predicted Occupancy': np.max(y_pred)
+    127 }
+File /databricks/python/lib/python3.12/site-packages/pandas/core/frame.py:3807, in DataFrame.__getitem__(self, key)
+   3805 if self.columns.nlevels > 1:
+   3806     return self._getitem_multilevel(key)
+-> 3807 indexer = self.columns.get_loc(key)
+   3808 if is_integer(indexer):
+   3809     indexer = [indexer]
+File /databricks/python/lib/python3.12/site-packages/pandas/core/indexes/base.py:3804, in Index.get_loc(self, key, method, tolerance)
+   3802     return self._engine.get_loc(casted_key)
+   3803 except KeyError as err:
+-> 3804     raise KeyError(key) from err
+   3805 except TypeError:
+   3806     # If we have a listlike key, _check_indexing_error will raise
+   3807     #  InvalidIndexError. Otherwise we fall through and re-raise
+   3808     #  the TypeError.
+   3809     self._check_indexing_error(key)
