@@ -1,0 +1,183 @@
+# Import all the necessary libraries
+import os
+import pandas as pd
+import numpy as np
+import cryptocode
+# import sharepy
+import requests
+ 
+#Visualization
+import matplotlib.pyplot as plt
+%matplotlib inline
+plt.rcParams["figure.figsize"] = (16,6)
+import seaborn as sns  
+plotsize = (16, 5)
+ 
+from pyspark.dbutils import DBUtils
+from pyspark.sql import SparkSession
+from datetime import datetime, date, time, timedelta
+from databricks.sdk.runtime import *
+dbutils.fs.cp("dbfs:/FileStore/Snowflake_Databricks_Utility.py", "file:/tmp/Snowflake_Databricks_Utility.py", True)
+import sys
+sys.path.append("/tmp")
+from Snowflake_Databricks_Utility import SnowFlakeUtility
+import warnings
+pd.set_option("display.max_columns",None)
+warnings.filterwarnings("ignore")
+ 
+# Replace the USER_ROLE(Role name should be in CAPS) with the role you have access to.
+myinstance = SnowFlakeUtility(user_role="HR_REAL_ESTATE")
+myinstance.execute()
+ 
+sfOptions = myinstance.sfOptions
+
+--------------------------------
+
+# Fetch Office Data from server
+office_query = '''
+SELECT
+  DISTINCT facility_code,
+  TTL_SEATS AS NUMBER_OF_SEATS
+FROM
+  HRDW.REAL_ESTATE.real_estate_build
+WHERE
+  DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1 MONTH' = DATE_TRUNC('DAY', calendar_date) AND
+  status_description = 'Active' AND
+  FACILITY_CODE = '0055'
+'''
+
+print('thinking...')
+office_spdf = spark.read.format("snowflake") \
+    .options(**sfOptions) \
+    .option("query", office_query) \
+    .option("sfWarehouse", "BIZ_REPORTING_WH") \
+    .load()
+
+office_df = office_spdf.toPandas()
+print('Shape of Office Data is', office_df.shape)
+
+--------------------
+
+# Fetch Office Data from server
+date_query = '''
+SELECT
+  calendar_date,
+  day_name
+ 
+FROM
+  HRDW.EMPLOYEE_ORG.CALENDAR
+WHERE
+ YEAR_ACTUAL >= '2023'
+'''
+
+print('thinking...')
+date_spdf = spark.read.format("snowflake") \
+    .options(**sfOptions) \
+    .option("query", date_query) \
+    .option("sfWarehouse", "BIZ_REPORTING_WH") \
+    .load()
+
+date_df = date_spdf.toPandas()
+print('Shape of Office Data is', date_df.shape)
+
+--------------------------------
+
+import pandas as pd
+
+# Fetch Office Data from server
+badge_query = '''
+SELECT
+  date,
+  employee_number,
+  office_number
+FROM
+  HRDW.REAL_ESTATE.badge_fact
+WHERE
+  date >= '2023-09-05' AND
+  office_number = '0055'
+'''
+
+print('thinking...')
+badge_spdf = spark.read.format("snowflake") \
+    .options(**sfOptions) \
+    .option("query", badge_query) \
+    .option("sfWarehouse", "BIZ_REPORTING_WH") \
+    .load()
+
+badge_df = badge_spdf.toPandas()
+print('Shape of Badge Data is', badge_df.shape)
+
+# Create the count_for_swipes column by concatenating the fields
+badge_df['count_for_swipes'] = badge_df.apply(lambda row: f"{row['DATE']}_{row['OFFICE_NUMBER']}_{row['EMPLOYEE_NUMBER']}", axis=1)
+
+# Group by DATE and OFFICE_NUMBER and count distinct occurrences of count_for_swipes
+daily_swipe_counts = badge_df.groupby(['DATE', 'OFFICE_NUMBER'])['count_for_swipes'].nunique().reset_index(name='distinct_swipe_count')
+
+# Print or return the resulting DataFrame
+print(daily_swipe_counts)
+
+
+-------------------------------
+
+
+daily_swipe_counts = badge_df.groupby(['DATE', 'OFFICE_NUMBER'])['count_for_swipes'].nunique().reset_index(name='distinct_swipe_count')
+
+# Merge daily_swipe_counts with office_df on OFFICE_NUMBER and FACILITY_CODE
+merged_df = daily_swipe_counts.merge(
+    office_df[['FACILITY_CODE', 'NUMBER_OF_SEATS']],  # Select only the columns needed from office_df
+    left_on='OFFICE_NUMBER',
+    right_on='FACILITY_CODE',
+    how='left'  # Use 'left' to keep all records from daily_swipe_counts
+)
+
+# Select only the required columns
+final_df = merged_df[['DATE', 'OFFICE_NUMBER', 'distinct_swipe_count', 'NUMBER_OF_SEATS']]
+
+# Display the final DataFrame
+print(final_df)
+
+--------------------------------
+
+import pandas as pd
+
+# Assuming `final_df` is your DataFrame containing the occupancy data
+percentiles = [0.75, 0.80, 0.85, 0.90, 0.95]
+seat_requirements = final_df['distinct_swipe_count'].quantile(percentiles)
+
+# Create a DataFrame for better readability
+seat_requirements_df = pd.DataFrame({
+    'Percentile': [f"{int(p*100)}th" for p in percentiles],
+    'Required Seats': seat_requirements.values
+})
+
+# Display the seat requirements
+print(seat_requirements_df)
+
+
+--------------------------------
+
+
+import pandas as pd
+
+# Ensure the actual column name is correctly referenced
+final_df.columns = final_df.columns.str.upper()  # If unsure, convert all to uppercase to align with CALENDAR_DATE
+
+# Ensure both DATE columns are of the datetime type for accurate merging
+final_df['DATE'] = pd.to_datetime(final_df['DATE'])  # Confirm 'DATE' is correct in final_df
+date_df['CALENDAR_DATE'] = pd.to_datetime(date_df['CALENDAR_DATE'])
+
+# Merge final_df with date_df to include the DAY_NAME
+final_df_with_day_name = final_df.merge(
+    date_df[['CALENDAR_DATE', 'DAY_NAME']],
+    left_on='DATE',
+    right_on='CALENDAR_DATE',
+    how='left'
+)
+
+# Drop the redundant CALENDAR_DATE column
+final_df_with_day_name.drop(columns=['CALENDAR_DATE'], inplace=True)
+
+# Display the final DataFrame with DAY_NAME
+print(final_df_with_day_name)
+
+
