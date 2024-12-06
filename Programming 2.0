@@ -338,21 +338,21 @@ def generate_space_optimization_report(results):
 
 ------
 
-TypeError: unsupported operand type(s) for /: 'float' and 'decimal.Decimal'
----------------------------------------------------------------------------
-TypeError                                 Traceback (most recent call last)
-File <command-1746125964264168>, line 138
-    135     return report
-    137 # Example usage (commented out as this would be integrated with your existing script)
---> 138 results = analyze_office_space_utilization(final_df_with_day_name)
-    139 visualize_office_utilization(final_df_with_day_name, results)
-    140 report = generate_space_optimization_report(results)
+# After your existing data preparation code (where you've created final_df_with_day_name)
 
-File <command-1746125964264168>, line 22, in analyze_office_space_utilization(final_df_with_day_name)
-     20 results['total_days_tracked'] = len(final_df_with_day_name)
-     21 results['average_daily_occupancy'] = final_df_with_day_name['DISTINCT_SWIPE_COUNT'].mean()
----> 22 results['average_seat_utilization'] = results['average_daily_occupancy'] / final_df_with_day_name['NUMBER_OF_SEATS'].iloc[0] * 100
-     24 # 2. Day of Week Analysis
-     25 day_of_week_analysis = final_df_with_day_name.groupby('DAY_NAME')['DISTINCT_SWIPE_COUNT'].agg(['mean', 'count']).reset_index()
+# Import the functions
+from office_space_analysis import (
+    analyze_office_space_utilization, 
+    visualize_office_utilization, 
+    generate_space_optimization_report
+)
 
-TypeError: unsupported operand type(s) for /: 'float' and 'decimal.Decimal'
+# Run the analysis
+results = analyze_office_space_utilization(final_df_with_day_name)
+
+# Generate visualizations
+visualize_office_utilization(final_df_with_day_name, results)
+
+# Generate and print the report
+report = generate_space_optimization_report(results)
+print(report)
