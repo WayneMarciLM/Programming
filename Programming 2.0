@@ -443,12 +443,13 @@ if ts_decomposition:
 --------------
 
 
-def prepare_time_series_data(final_df_with_day_name):
+def prepare_time_series_data(final_df_with_day_name, original_seats_df):
     """
     Prepare time series data for predictive modeling
     
     Args:
         final_df_with_day_name (pd.DataFrame): DataFrame with daily occupancy data
+        original_seats_df (pd.DataFrame): Original dataframe with seat information
     
     Returns:
         pd.DataFrame: Prepared time series dataframe
@@ -457,6 +458,14 @@ def prepare_time_series_data(final_df_with_day_name):
     daily_occupancy = final_df_with_day_name.groupby('DATE')['DISTINCT_SWIPE_COUNT'].mean().reset_index()
     daily_occupancy.set_index('DATE', inplace=True)
     daily_occupancy.sort_index(inplace=True)
+    
+    # Extract total seats (assuming consistent across the dataset)
+    try:
+        total_seats = original_seats_df['NUMBER_OF_SEATS'].iloc[0]
+        daily_occupancy['NUMBER_OF_SEATS'] = total_seats
+    except Exception as e:
+        print(f"Warning: Could not extract seat count. Using default. Error: {e}")
+        daily_occupancy['NUMBER_OF_SEATS'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].max()
     
     # Create lag features and rolling statistics
     daily_occupancy['lag_1'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].shift(1)
@@ -494,10 +503,11 @@ def predictive_occupancy_modeling(final_df_with_day_name):
     from statsmodels.tsa.arima.model import ARIMA
     
     # Prepare time series data
-    daily_occupancy = prepare_time_series_data(final_df_with_day_name)
+    # Note: You'll need to pass the original office_df that contains the seat count
+    daily_occupancy = prepare_time_series_data(final_df_with_day_name, office_df)
     
     # Prepare features and target
-    X = daily_occupancy.drop('DISTINCT_SWIPE_COUNT', axis=1)
+    X = daily_occupancy.drop(['DISTINCT_SWIPE_COUNT', 'NUMBER_OF_SEATS'], axis=1)
     y = daily_occupancy['DISTINCT_SWIPE_COUNT']
     
     # Split data
@@ -566,6 +576,7 @@ def predictive_occupancy_modeling(final_df_with_day_name):
     overcapacity_threshold = seats_total * 0.9  # 90% utilization threshold
     
     model_results['Overcapacity Analysis'] = {
+        'Total Seats': seats_total,
         'Overcapacity Probability': np.mean(y_pred > overcapacity_threshold),
         'Average Predicted Occupancy': np.mean(y_pred),
         'Max Predicted Occupancy': np.max(y_pred)
@@ -623,66 +634,3 @@ for model, metrics in predictive_results['model_performance'].items():
     print(f"\n{model}:")
     for metric, value in metrics.items():
         print(f"{metric}: {value}")
-
-# Optional: Detailed forecast analysis can be added here
-
-
---------------
-
-#error
-
-
-
-
-19:30:36 - cmdstanpy - INFO - Chain [1] start processing
-19:30:36 - cmdstanpy - INFO - Chain [1] done processing
-
-KeyError: 'NUMBER_OF_SEATS'
-File /databricks/python/lib/python3.12/site-packages/pandas/core/indexes/base.py:3802, in Index.get_loc(self, key, method, tolerance)
-   3801 try:
--> 3802     return self._engine.get_loc(casted_key)
-   3803 except KeyError as err:
-File /databricks/python/lib/python3.12/site-packages/pandas/_libs/index.pyx:138, in pandas._libs.index.IndexEngine.get_loc()
-File /databricks/python/lib/python3.12/site-packages/pandas/_libs/index.pyx:165, in pandas._libs.index.IndexEngine.get_loc()
-File pandas/_libs/hashtable_class_helper.pxi:5745, in pandas._libs.hashtable.PyObjectHashTable.get_item()
-File pandas/_libs/hashtable_class_helper.pxi:5753, in pandas._libs.hashtable.PyObjectHashTable.get_item()
-KeyError: 'NUMBER_OF_SEATS'
-
-The above exception was the direct cause of the following exception:
-KeyError                                  Traceback (most recent call last)
-File <command-3792999931981891>, line 172
-    162     return {
-    163         'model_performance': model_results,
-    164         'prophet_forecast': forecast,
-   (...)
-    168         }
-    169     }
-    171 # Run the predictive modeling
---> 172 predictive_results = predictive_occupancy_modeling(final_df_with_day_name)
-    174 # Print out key insights
-    175 print("\n--- Predictive Modeling Insights ---")
-File <command-3792999931981891>, line 120, in predictive_occupancy_modeling(final_df_with_day_name)
-    117 ensemble_pred = np.mean(list(ensemble_predictions.values()), axis=0)
-    119 # Overcapacity Likelihood
---> 120 seats_total = daily_occupancy['NUMBER_OF_SEATS'].iloc[0]  # Assumes consistent seat count
-    121 overcapacity_threshold = seats_total * 0.9  # 90% utilization threshold
-    123 model_results['Overcapacity Analysis'] = {
-    124     'Overcapacity Probability': np.mean(y_pred > overcapacity_threshold),
-    125     'Average Predicted Occupancy': np.mean(y_pred),
-    126     'Max Predicted Occupancy': np.max(y_pred)
-    127 }
-File /databricks/python/lib/python3.12/site-packages/pandas/core/frame.py:3807, in DataFrame.__getitem__(self, key)
-   3805 if self.columns.nlevels > 1:
-   3806     return self._getitem_multilevel(key)
--> 3807 indexer = self.columns.get_loc(key)
-   3808 if is_integer(indexer):
-   3809     indexer = [indexer]
-File /databricks/python/lib/python3.12/site-packages/pandas/core/indexes/base.py:3804, in Index.get_loc(self, key, method, tolerance)
-   3802     return self._engine.get_loc(casted_key)
-   3803 except KeyError as err:
--> 3804     raise KeyError(key) from err
-   3805 except TypeError:
-   3806     # If we have a listlike key, _check_indexing_error will raise
-   3807     #  InvalidIndexError. Otherwise we fall through and re-raise
-   3808     #  the TypeError.
-   3809     self._check_indexing_error(key)
