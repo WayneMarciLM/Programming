@@ -1,15 +1,16 @@
+# Import necessary packages
 import os
 import pandas as pd
 import numpy as np
 import cryptocode
 import requests
- 
+
 # Visualization
 import matplotlib.pyplot as plt
 import seaborn as sns
 plt.rcParams["figure.figsize"] = (16,6)
 plotsize = (16, 5)
- 
+
 from pyspark.dbutils import DBUtils
 from pyspark.sql import SparkSession
 from datetime import datetime, date, time, timedelta
@@ -19,13 +20,13 @@ import sys
 sys.path.append("/tmp")
 from Snowflake_Databricks_Utility import SnowFlakeUtility
 import warnings
-pd.set_option("display.max_columns",None)
+pd.set_option("display.max_columns", None)
 warnings.filterwarnings("ignore")
- 
+
 # Replace the USER_ROLE(Role name should be in CAPS) with the role you have access to.
 myinstance = SnowFlakeUtility(user_role="HR_REAL_ESTATE")
 myinstance.execute()
- 
+
 sfOptions = myinstance.sfOptions
 
 # Fetch Office Data from server
@@ -38,7 +39,7 @@ FROM
 WHERE
   DATE_TRUNC('MONTH', CURRENT_DATE) - INTERVAL '1 MONTH' = DATE_TRUNC('DAY', calendar_date) AND
   status_description = 'Active' AND
-  FACILITY_CODE = '0055'
+  FACILITY_CODE = '014I'
 '''
 
 print('thinking...')
@@ -82,7 +83,7 @@ FROM
   HRDW.REAL_ESTATE.badge_fact
 WHERE
   date >= '2023-09-05' AND
-  office_number = '0055'
+  office_number = '014I'
 '''
 
 print('thinking...')
@@ -130,6 +131,16 @@ final_df_with_day_name = final_df.merge(
 # Drop the redundant CALENDAR_DATE column
 final_df_with_day_name.drop(columns=['CALENDAR_DATE'], inplace=True)
 
+# Strip whitespace from the 'DAY_NAME' column
+final_df_with_day_name['DAY_NAME'] = final_df_with_day_name['DAY_NAME'].str.strip()
+
+# Filter out weekends and define weekdays_df
+weekdays_df = final_df_with_day_name[~final_df_with_day_name['DAY_NAME'].isin(['Saturday', 'Sunday'])]
+
+# Check if weekdays_df is correctly defined
+print("Unique days in weekdays_df after filtering:")
+print(weekdays_df['DAY_NAME'].unique())  # Should only show ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
 def analyze_office_space_utilization(final_df_with_day_name):
     """
     Comprehensive analysis of office space utilization
@@ -140,9 +151,6 @@ def analyze_office_space_utilization(final_df_with_day_name):
     Returns:
         dict: Comprehensive analysis results
     """
-    # Filter out weekends
-    weekdays_df = final_df_with_day_name[~final_df_with_day_name['DAY_NAME'].isin(['Saturday', 'Sunday'])]
-    
     # Ensure numeric types
     weekdays_df['DISTINCT_SWIPE_COUNT'] = pd.to_numeric(weekdays_df['DISTINCT_SWIPE_COUNT'], errors='coerce')
     weekdays_df['NUMBER_OF_SEATS'] = pd.to_numeric(weekdays_df['NUMBER_OF_SEATS'], errors='coerce')
