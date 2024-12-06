@@ -588,3 +588,150 @@ def predictive_occupancy_modeling(final_df_with_day_name, office_df):
 
 # Run the predictive modeling
 predictive_results = predictive_occupancy_modeling(final_df_with_day_name, office_df)
+
+
+-----------
+
+#new insights
+
+def generate_occupancy_insights(predictive_results, original_df):
+    """
+    Generate comprehensive insights from predictive modeling results
+    
+    Args:
+        predictive_results (dict): Results from predictive occupancy modeling
+        original_df (pd.DataFrame): Original dataframe with occupancy data
+    
+    Returns:
+        dict: Detailed insights about office occupancy and seat management
+    """
+    import numpy as np
+    import pandas as pd
+    
+    # Extract key information
+    model_performance = predictive_results['model_performance']
+    prophet_forecast = predictive_results['prophet_forecast']
+    arima_forecast = predictive_results['arima_forecast']
+    
+    # Detailed Insights Dictionary
+    insights = {
+        'overall_summary': {},
+        'model_performance_details': {},
+        'capacity_analysis': {},
+        'trend_analysis': {},
+        'recommendations': []
+    }
+    
+    # 1. Overall Model Performance Summary
+    best_model = min(model_performance.items(), 
+                     key=lambda x: x[1]['MAE'] if x[0] != 'Overcapacity Analysis' else float('inf'))
+    
+    insights['overall_summary'] = {
+        'best_performing_model': best_model[0],
+        'best_model_mae': best_model[1]['MAE'],
+        'best_model_r2': best_model[1]['R2'],
+    }
+    
+    # 2. Detailed Model Performance
+    for model_name, metrics in model_performance.items():
+        if model_name != 'Overcapacity Analysis':
+            insights['model_performance_details'][model_name] = {
+                'Mean Absolute Error': metrics['MAE'],
+                'Mean Squared Error': metrics['MSE'],
+                'Root Mean Squared Error': metrics['RMSE'],
+                'R-squared Score': metrics['R2']
+            }
+    
+    # 3. Capacity and Overcapacity Analysis
+    overcapacity_analysis = model_performance.get('Overcapacity Analysis', {})
+    insights['capacity_analysis'] = {
+        'total_seats': overcapacity_analysis.get('Total Seats', 'N/A'),
+        'average_predicted_occupancy': overcapacity_analysis.get('Average Predicted Occupancy', 'N/A'),
+        'max_predicted_occupancy': overcapacity_analysis.get('Max Predicted Occupancy', 'N/A'),
+        'overcapacity_probability': overcapacity_analysis.get('Overcapacity Probability', 'N/A') * 100
+    }
+    
+    # 4. Trend Analysis from Prophet and ARIMA
+    # Prophet Forecast Trends
+    prophet_forecast_df = prophet_forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+    prophet_trends = {
+        'forecast_mean': prophet_forecast_df['yhat'].mean(),
+        'forecast_min': prophet_forecast_df['yhat_lower'].min(),
+        'forecast_max': prophet_forecast_df['yhat_upper'].max(),
+        'forecast_volatility': prophet_forecast_df['yhat'].std()
+    }
+    
+    insights['trend_analysis']['prophet_forecast'] = prophet_trends
+    
+    # 5. Seasonality and Cyclical Patterns
+    # Extract day of week and monthly patterns from original data
+    original_df['day_of_week'] = pd.to_datetime(original_df['DATE']).dt.day_of_week
+    original_df['month'] = pd.to_datetime(original_df['DATE']).dt.month
+    
+    day_of_week_avg = original_df.groupby('day_of_week')['DISTINCT_SWIPE_COUNT'].mean()
+    month_avg = original_df.groupby('month')['DISTINCT_SWIPE_COUNT'].mean()
+    
+    insights['trend_analysis']['weekly_patterns'] = {
+        day_name: avg for day_name, avg in zip(
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 
+            day_of_week_avg
+        )
+    }
+    insights['trend_analysis']['monthly_patterns'] = {
+        month_name: avg for month_name, avg in zip(
+            ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], 
+            month_avg
+        )
+    }
+    
+    # 6. Recommendations
+    recommendations = []
+    
+    # Seat Utilization Recommendations
+    if insights['capacity_analysis']['overcapacity_probability'] > 50:
+        recommendations.append(
+            f"High probability ({insights['capacity_analysis']['overcapacity_probability']:.2f}%) "
+            "of exceeding 90% seat capacity. Consider flexible seating or expansion."
+        )
+    elif insights['capacity_analysis']['overcapacity_probability'] < 20:
+        recommendations.append(
+            f"Low occupancy probability ({insights['capacity_analysis']['overcapacity_probability']:.2f}%). "
+            "Consider optimizing office space or implementing hot-desking."
+        )
+    
+    # Weekly Pattern Recommendations
+    lowest_day = min(insights['trend_analysis']['weekly_patterns'], 
+                     key=insights['trend_analysis']['weekly_patterns'].get)
+    highest_day = max(insights['trend_analysis']['weekly_patterns'], 
+                      key=insights['trend_analysis']['weekly_patterns'].get)
+    
+    recommendations.append(
+        f"Lowest occupancy day: {lowest_day}, "
+        f"Highest occupancy day: {highest_day}. "
+        "Consider flexible scheduling or resource allocation."
+    )
+    
+    # Seasonal Trend Recommendations
+    lowest_month = min(insights['trend_analysis']['monthly_patterns'], 
+                       key=insights['trend_analysis']['monthly_patterns'].get)
+    highest_month = max(insights['trend_analysis']['monthly_patterns'], 
+                        key=insights['trend_analysis']['monthly_patterns'].get)
+    
+    recommendations.append(
+        f"Lowest occupancy month: {lowest_month}, "
+        f"Highest occupancy month: {highest_month}. "
+        "Plan seasonal workspace adjustments accordingly."
+    )
+    
+    insights['recommendations'] = recommendations
+    
+    return insights
+
+# Generate and print detailed insights
+detailed_occupancy_insights = generate_occupancy_insights(predictive_results, final_df_with_day_name)
+
+# Pretty print the insights
+import json
+print("\n--- Comprehensive Occupancy Insights ---")
+print(json.dumps(detailed_occupancy_insights, indent=2))
