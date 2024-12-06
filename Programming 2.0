@@ -439,3 +439,189 @@ if ts_decomposition:
     print("\nResidual Analysis:")
     for key, value in ts_decomposition['decomposition_stats']['residual_analysis'].items():
         print(f"{key}: {value}")
+
+--------------
+
+
+def prepare_time_series_data(final_df_with_day_name):
+    """
+    Prepare time series data for predictive modeling
+    
+    Args:
+        final_df_with_day_name (pd.DataFrame): DataFrame with daily occupancy data
+    
+    Returns:
+        pd.DataFrame: Prepared time series dataframe
+    """
+    # Group by date and calculate mean daily occupancy
+    daily_occupancy = final_df_with_day_name.groupby('DATE')['DISTINCT_SWIPE_COUNT'].mean().reset_index()
+    daily_occupancy.set_index('DATE', inplace=True)
+    daily_occupancy.sort_index(inplace=True)
+    
+    # Create lag features and rolling statistics
+    daily_occupancy['lag_1'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].shift(1)
+    daily_occupancy['lag_7'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].shift(7)
+    daily_occupancy['rolling_mean_7'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].rolling(window=7).mean()
+    daily_occupancy['rolling_std_7'] = daily_occupancy['DISTINCT_SWIPE_COUNT'].rolling(window=7).std()
+    
+    # Add cyclical time features
+    daily_occupancy['day_of_week'] = daily_occupancy.index.dayofweek
+    daily_occupancy['month'] = daily_occupancy.index.month
+    
+    # Drop NaN rows created by lag and rolling features
+    daily_occupancy.dropna(inplace=True)
+    
+    return daily_occupancy
+
+def predictive_occupancy_modeling(final_df_with_day_name):
+    """
+    Implement multiple predictive modeling techniques for office occupancy
+    
+    Args:
+        final_df_with_day_name (pd.DataFrame): DataFrame with daily occupancy data
+    
+    Returns:
+        dict: Predictive modeling results and evaluations
+    """
+    import numpy as np
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+    from sklearn.linear_model import LinearRegression
+    from prophet import Prophet
+    from statsmodels.tsa.arima.model import ARIMA
+    
+    # Prepare time series data
+    daily_occupancy = prepare_time_series_data(final_df_with_day_name)
+    
+    # Prepare features and target
+    X = daily_occupancy.drop('DISTINCT_SWIPE_COUNT', axis=1)
+    y = daily_occupancy['DISTINCT_SWIPE_COUNT']
+    
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+    
+    # Scale features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Predictive Models
+    models = {
+        'Linear Regression': LinearRegression(),
+        'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
+        'Gradient Boosting': GradientBoostingRegressor(n_estimators=100, random_state=42)
+    }
+    
+    # Model evaluation results
+    model_results = {}
+    
+    # Train and evaluate machine learning models
+    for name, model in models.items():
+        model.fit(X_train_scaled, y_train)
+        y_pred = model.predict(X_test_scaled)
+        
+        model_results[name] = {
+            'MAE': mean_absolute_error(y_test, y_pred),
+            'MSE': mean_squared_error(y_test, y_pred),
+            'RMSE': np.sqrt(mean_squared_error(y_test, y_pred)),
+            'R2': r2_score(y_test, y_pred)
+        }
+    
+    # Prophet Forecasting
+    prophet_df = daily_occupancy.reset_index().rename(columns={'DATE': 'ds', 'DISTINCT_SWIPE_COUNT': 'y'})
+    prophet_model = Prophet(
+        changepoint_prior_scale=0.05,
+        seasonality_prior_scale=10,
+        holidays_prior_scale=10
+    )
+    prophet_model.add_seasonality(name='weekly', period=7, fourier_order=3)
+    prophet_model.fit(prophet_df)
+    
+    # Prophet Future Forecast
+    future = prophet_model.make_future_dataframe(periods=30)  # 30 days forecast
+    forecast = prophet_model.predict(future)
+    
+    # ARIMA Modeling
+    arima_model = ARIMA(y, order=(5,1,2))
+    arima_fit = arima_model.fit()
+    
+    # Forecast with Confidence Intervals
+    forecast_horizon = 30
+    arima_forecast = arima_fit.get_forecast(steps=forecast_horizon)
+    arima_pred = arima_forecast.predicted_mean
+    arima_ci = arima_forecast.conf_int()
+    
+    # Ensemble Method (Simple Average)
+    ensemble_predictions = {}
+    for name, model in models.items():
+        ensemble_predictions[name] = model.predict(X_test_scaled)
+    
+    ensemble_pred = np.mean(list(ensemble_predictions.values()), axis=0)
+    
+    # Overcapacity Likelihood
+    seats_total = daily_occupancy['NUMBER_OF_SEATS'].iloc[0]  # Assumes consistent seat count
+    overcapacity_threshold = seats_total * 0.9  # 90% utilization threshold
+    
+    model_results['Overcapacity Analysis'] = {
+        'Overcapacity Probability': np.mean(y_pred > overcapacity_threshold),
+        'Average Predicted Occupancy': np.mean(y_pred),
+        'Max Predicted Occupancy': np.max(y_pred)
+    }
+    
+    # Visualize Forecasts
+    plt.figure(figsize=(15, 10))
+    
+    # Actual vs Predicted
+    plt.subplot(2, 2, 1)
+    plt.plot(y_test.index, y_test.values, label='Actual')
+    plt.plot(y_test.index, y_pred, label='Predicted', alpha=0.7)
+    plt.title('Actual vs Predicted Occupancy')
+    plt.legend()
+    
+    # Prophet Forecast
+    plt.subplot(2, 2, 2)
+    plt.plot(forecast['ds'], forecast['yhat'], label='Forecast')
+    plt.fill_between(forecast['ds'], forecast['yhat_lower'], forecast['yhat_upper'], alpha=0.3)
+    plt.title('Prophet Forecast with Uncertainty')
+    
+    # ARIMA Forecast
+    plt.subplot(2, 2, 3)
+    plt.plot(arima_pred.index, arima_pred.values, label='ARIMA Forecast')
+    plt.fill_between(arima_ci.index, 
+                     arima_ci.iloc[:, 0], 
+                     arima_ci.iloc[:, 1], 
+                     alpha=0.3)
+    plt.title('ARIMA Forecast with Confidence Interval')
+    
+    # Ensemble Predictions
+    plt.subplot(2, 2, 4)
+    plt.plot(y_test.index, ensemble_pred, label='Ensemble Prediction')
+    plt.title('Ensemble Model Predictions')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return {
+        'model_performance': model_results,
+        'prophet_forecast': forecast,
+        'arima_forecast': {
+            'predictions': arima_pred,
+            'confidence_intervals': arima_ci
+        }
+    }
+
+# Run the predictive modeling
+predictive_results = predictive_occupancy_modeling(final_df_with_day_name)
+
+# Print out key insights
+print("\n--- Predictive Modeling Insights ---")
+print("\nModel Performance:")
+for model, metrics in predictive_results['model_performance'].items():
+    print(f"\n{model}:")
+    for metric, value in metrics.items():
+        print(f"{metric}: {value}")
+
+# Optional: Detailed forecast analysis can be added here
