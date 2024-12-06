@@ -652,3 +652,109 @@ visualize_office_utilization(final_df_with_day_name, results)
 # Generate and print the report
 report = generate_space_optimization_report(results)
 print(report)
+
+
+-------------
+def analyze_office_space_utilization(final_df_with_day_name):
+    """
+    Comprehensive analysis of office space utilization
+    
+    Args:
+        final_df_with_day_name (pd.DataFrame): DataFrame with occupancy data
+    
+    Returns:
+        dict: Comprehensive analysis results
+    """
+    # Filter out weekends
+    weekdays_df = final_df_with_day_name[~final_df_with_day_name['DAY_NAME'].isin(['Saturday', 'Sunday'])]
+    
+    # Ensure numeric types
+    weekdays_df['DISTINCT_SWIPE_COUNT'] = pd.to_numeric(weekdays_df['DISTINCT_SWIPE_COUNT'], errors='coerce')
+    weekdays_df['NUMBER_OF_SEATS'] = pd.to_numeric(weekdays_df['NUMBER_OF_SEATS'], errors='coerce')
+    
+    # Analysis Metrics
+    results = {}
+    
+    # 1. Overall Occupancy Analysis
+    results['total_days_tracked'] = len(weekdays_df)
+    results['average_daily_occupancy'] = weekdays_df['DISTINCT_SWIPE_COUNT'].mean()
+    
+    # Safely handle seat count
+    total_seats = weekdays_df['NUMBER_OF_SEATS'].iloc[0]
+    if pd.notna(total_seats) and total_seats != 0:
+        results['average_seat_utilization'] = (results['average_daily_occupancy'] / total_seats) * 100
+    else:
+        results['average_seat_utilization'] = 0
+    
+    # 2. Day of Week Analysis
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    day_of_week_analysis = weekdays_df.groupby('DAY_NAME')['DISTINCT_SWIPE_COUNT'].agg(['mean', 'count']).reset_index()
+    
+    # Ensure all weekdays are represented, even if they have no data
+    day_df = pd.DataFrame({'DAY_NAME': day_order})
+    day_of_week_analysis = day_df.merge(day_of_week_analysis, on='DAY_NAME', how='left').fillna(0)
+    
+    # Safely calculate utilization percentage
+    if pd.notna(total_seats) and total_seats != 0:
+        day_of_week_analysis['utilization_percentage'] = day_of_week_analysis['mean'] / total_seats * 100
+    else:
+        day_of_week_analysis['utilization_percentage'] = 0
+    
+    results['day_of_week_analysis'] = day_of_week_analysis
+    
+    # Rest of the function remains the same as in the previous version
+    # ... (keep the remaining code from the previous implementation)
+    
+    return results
+
+def visualize_office_utilization(final_df_with_day_name, results):
+    """
+    Create visualizations for office space utilization
+    
+    Args:
+        final_df_with_day_name (pd.DataFrame): DataFrame with occupancy data
+        results (dict): Analysis results from analyze_office_space_utilization
+    """
+    # Filter out weekends
+    weekdays_df = final_df_with_day_name[~final_df_with_day_name['DAY_NAME'].isin(['Saturday', 'Sunday'])]
+    
+    plt.figure(figsize=(15, 10))
+    
+    # Day of Week Utilization
+    plt.subplot(2, 2, 1)
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    day_analysis = results['day_of_week_analysis'].set_index('DAY_NAME')
+    day_analysis = day_analysis.reindex(day_order)
+    
+    day_analysis['utilization_percentage'].plot(kind='bar')
+    plt.title('Daily Utilization Percentage')
+    plt.xlabel('Day of Week')
+    plt.ylabel('Utilization %')
+    plt.xticks(rotation=45)
+    
+    # Daily Occupancy Distribution
+    plt.subplot(2, 2, 2)
+    weekdays_df['DISTINCT_SWIPE_COUNT'].hist(bins=20)
+    plt.title('Distribution of Daily Occupancy')
+    plt.xlabel('Number of Occupants')
+    plt.ylabel('Frequency')
+    
+    # Box Plot of Occupancy by Day
+    plt.subplot(2, 2, 3)
+    sns.boxplot(x='DAY_NAME', y='DISTINCT_SWIPE_COUNT', 
+                data=weekdays_df, 
+                order=day_order)
+    plt.title('Occupancy Distribution by Day')
+    plt.xlabel('Day of Week')
+    plt.ylabel('Number of Occupants')
+    plt.xticks(rotation=45)
+    
+    # Seat Capacity vs Actual Usage
+    plt.subplot(2, 2, 4)
+    plt.scatter(weekdays_df['NUMBER_OF_SEATS'], weekdays_df['DISTINCT_SWIPE_COUNT'])
+    plt.title('Seat Capacity vs Actual Usage')
+    plt.xlabel('Total Seats')
+    plt.ylabel('Actual Occupancy')
+    
+    plt.tight_layout()
+    plt.show()
