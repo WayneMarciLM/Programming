@@ -634,3 +634,37 @@ for model, metrics in predictive_results['model_performance'].items():
     print(f"\n{model}:")
     for metric, value in metrics.items():
         print(f"{metric}: {value}")
+
+
+
+
+#error
+
+
+
+
+19:34:45 - cmdstanpy - INFO - Chain [1] start processing
+19:34:45 - cmdstanpy - INFO - Chain [1] done processing
+
+TypeError: unsupported operand type(s) for *: 'decimal.Decimal' and 'float'
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+File <command-3792999931981891>, line 183
+    173     return {
+    174         'model_performance': model_results,
+    175         'prophet_forecast': forecast,
+   (...)
+    179         }
+    180     }
+    182 # Run the predictive modeling
+--> 183 predictive_results = predictive_occupancy_modeling(final_df_with_day_name)
+    185 # Print out key insights
+    186 print("\n--- Predictive Modeling Insights ---")
+
+File <command-3792999931981891>, line 131, in predictive_occupancy_modeling(final_df_with_day_name)
+    129 # Overcapacity Likelihood
+    130 seats_total = daily_occupancy['NUMBER_OF_SEATS'].iloc[0]  # Assumes consistent seat count
+--> 131 overcapacity_threshold = seats_total * 0.9  # 90% utilization threshold
+    133 model_results['Overcapacity Analysis'] = {
+    134     'Total Seats': seats_total,
+    135     'Overcapacity Probability': np.mean(y_pred > overcapacity_threshold),
