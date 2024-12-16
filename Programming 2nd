@@ -107,3 +107,172 @@ def main(badge_df, office_number, total_office_capacity):
 # Assuming badge_df is already loaded and total_office_capacity is known
 # total_office_capacity = X  # Replace X with the total capacity of the office
 # result_occupancy, result_optimal, result_scenarios = main(badge_df, '0055', total_office_capacity)
+
+
+---------
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+def detailed_badge_swipe_analysis(badge_df):
+    """
+    Perform a comprehensive analysis of badge swipes with multiple verification methods
+    
+    Parameters:
+    -----------
+    badge_df : pandas DataFrame
+        DataFrame containing badge swipe data
+    
+    Returns:
+    --------
+    dict : Detailed analysis of badge swipes
+    """
+    # Convert date to datetime
+    badge_df['date'] = pd.to_datetime(badge_df['date'])
+    
+    # Detailed Verification Analysis
+    verification_results = {}
+    
+    # 1. Basic Swipe Counts
+    verification_results['total_raw_rows'] = len(badge_df)
+    
+    # 2. Unique Swipe Metrics
+    verification_results['unique_employees'] = badge_df['employee_number'].nunique()
+    
+    # 3. Detailed Swipe Counting Methods
+    # Method 1: Distinct employee-date-office combinations
+    distinct_swipes_1 = badge_df.groupby(['date', 'employee_number', 'office_number']).size().reset_index(name='swipe_count')
+    verification_results['distinct_swipes_method1'] = len(distinct_swipes_1)
+    
+    # Method 2: Unique combinations with explicit distinct count
+    distinct_swipes_2 = badge_df[['date', 'employee_number', 'office_number']].drop_duplicates()
+    verification_results['distinct_swipes_method2'] = len(distinct_swipes_2)
+    
+    # 4. Daily Swipe Analysis
+    daily_swipe_summary = badge_df.groupby('date').agg({
+        'employee_number': 'nunique',
+        'office_number': 'first'
+    }).reset_index()
+    verification_results['daily_swipe_summary'] = daily_swipe_summary
+    
+    # 5. Employee Swipe Frequency
+    employee_swipe_freq = badge_df.groupby('employee_number').agg({
+        'date': ['count', 'nunique'],
+        'office_number': 'nunique'
+    })
+    employee_swipe_freq.columns = ['total_swipes', 'unique_swipe_dates', 'unique_offices']
+    verification_results['employee_swipe_frequency'] = employee_swipe_freq
+    
+    # 6. Detailed Breakdown by Office
+    office_breakdown = badge_df.groupby('office_number').agg({
+        'employee_number': 'nunique',
+        'date': ['min', 'max', 'nunique']
+    })
+    office_breakdown.columns = ['unique_employees', 'first_swipe_date', 'last_swipe_date', 'swipe_days']
+    verification_results['office_breakdown'] = office_breakdown
+    
+    # 7. Visualization of Swipe Distribution
+    plt.figure(figsize=(15,10))
+    
+    # Swipes per Employee Distribution
+    plt.subplot(2,2,1)
+    employee_swipe_freq['total_swipes'].hist(bins=30)
+    plt.title('Distribution of Total Swipes per Employee')
+    plt.xlabel('Number of Swipes')
+    plt.ylabel('Number of Employees')
+    
+    # Swipe Dates per Employee Distribution
+    plt.subplot(2,2,2)
+    employee_swipe_freq['unique_swipe_dates'].hist(bins=30)
+    plt.title('Distribution of Unique Swipe Dates per Employee')
+    plt.xlabel('Number of Unique Swipe Dates')
+    plt.ylabel('Number of Employees')
+    
+    # Daily Unique Employees
+    plt.subplot(2,2,3)
+    daily_swipe_summary['employee_number'].plot(kind='line')
+    plt.title('Daily Unique Employee Swipes')
+    plt.xlabel('Date')
+    plt.ylabel('Number of Unique Employees')
+    plt.xticks(rotation=45)
+    
+    # Unique Offices per Employee
+    plt.subplot(2,2,4)
+    employee_swipe_freq['unique_offices'].hist(bins=10)
+    plt.title('Number of Unique Offices per Employee')
+    plt.xlabel('Number of Unique Offices')
+    plt.ylabel('Number of Employees')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    # 8. Detailed Verification Report
+    verification_report = f"""
+    Badge Swipe Verification Report:
+    ===============================
+    Total Raw Rows: {verification_results['total_raw_rows']}
+    Unique Employees: {verification_results['unique_employees']}
+    
+    Distinct Swipe Counts:
+    - Method 1 (Grouped): {verification_results['distinct_swipes_method1']}
+    - Method 2 (Distinct): {verification_results['distinct_swipes_method2']}
+    
+    Data Integrity Checks:
+    - Minimum Date: {daily_swipe_summary['date'].min()}
+    - Maximum Date: {daily_swipe_summary['date'].max()}
+    - Total Unique Swipe Days: {daily_swipe_summary['date'].nunique()}
+    """
+    
+    print(verification_report)
+    
+    return verification_results
+
+# Function to validate swipe uniqueness
+def validate_swipe_uniqueness(badge_df):
+    """
+    Validate that each row represents a unique swipe
+    
+    Parameters:
+    -----------
+    badge_df : pandas DataFrame
+        DataFrame containing badge swipe data
+    
+    Returns:
+    --------
+    dict : Uniqueness validation results
+    """
+    # Check for exact duplicates
+    exact_duplicates = badge_df.duplicated()
+    
+    # Check for duplicates considering specific columns
+    unique_swipe_columns = ['date', 'employee_number', 'office_number']
+    duplicate_swipes = badge_df[badge_df.duplicated(subset=unique_swipe_columns, keep=False)]
+    
+    validation_results = {
+        'total_rows': len(badge_df),
+        'exact_duplicates': sum(exact_duplicates),
+        'unique_swipe_duplicates': len(duplicate_swipes),
+        'duplicate_details': duplicate_swipes
+    }
+    
+    print("Swipe Uniqueness Validation:")
+    print(f"Total Rows: {validation_results['total_rows']}")
+    print(f"Exact Duplicates: {validation_results['exact_duplicates']}")
+    print(f"Unique Swipe Duplicates: {validation_results['unique_swipe_duplicates']}")
+    
+    return validation_results
+
+# Main execution function
+def main_swipe_analysis(badge_df):
+    # Perform detailed badge swipe analysis
+    verification_results = detailed_badge_swipe_analysis(badge_df)
+    
+    # Validate swipe uniqueness
+    uniqueness_results = validate_swipe_uniqueness(badge_df)
+    
+    return verification_results, uniqueness_results
+
+# Example usage
+# results, uniqueness = main_swipe_analysis(badge_df)
