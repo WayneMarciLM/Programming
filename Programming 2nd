@@ -276,3 +276,49 @@ def main_swipe_analysis(badge_df):
 
 # Example usage
 # results, uniqueness = main_swipe_analysis(badge_df)
+
+
+
+----------
+
+
+def daily_swipe_count_analysis(badge_df):
+    # Ensure date is in datetime format
+    badge_df['date'] = pd.to_datetime(badge_df['date'])
+    
+    # Count distinct swipes per day
+    daily_swipe_counts = badge_df.groupby('date').agg({
+        'employee_number': 'nunique',  # Unique employees who swiped
+        'office_number': 'first'       # Office number for reference
+    }).reset_index()
+    
+    # Rename columns for clarity
+    daily_swipe_counts.columns = ['Date', 'Unique_Employees', 'Office_Number']
+    
+    # Sort by number of swipes in descending order
+    daily_swipe_counts_sorted = daily_swipe_counts.sort_values('Unique_Employees', ascending=False)
+    
+    # Calculate percentage of max swipes
+    max_swipes = daily_swipe_counts_sorted['Unique_Employees'].max()
+    daily_swipe_counts_sorted['Percent_of_Max_Swipes'] = (daily_swipe_counts_sorted['Unique_Employees'] / max_swipes * 100).round(2)
+    
+    # Display the full table
+    print("Daily Swipe Counts (Sorted by Number of Unique Employees):")
+    print(daily_swipe_counts_sorted.to_string(index=False))
+    
+    # Optional: Create a visualization
+    plt.figure(figsize=(15,6))
+    plt.bar(daily_swipe_counts_sorted['Date'], daily_swipe_counts_sorted['Unique_Employees'])
+    plt.title('Daily Unique Employee Swipes')
+    plt.xlabel('Date')
+    plt.ylabel('Number of Unique Employees')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+    
+    return daily_swipe_counts_sorted
+
+# Usage
+# daily_swipes = daily_swipe_count_analysis(badge_df)
+
+daily_swipes = daily_swipe_count_analysis(badge_df)
