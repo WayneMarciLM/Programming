@@ -1,76 +1,109 @@
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
 
-# SQL query to fetch badge data and join with employee info
-full_query = '''
-SELECT
-  b.date,
-  b.employee_number,
-  b.office_number,
-  l.location_code,
-  o.cost_center_code,
-  pw.work_location_1_code,
-  g.grade_equivalent,
-  j.job_family,
-  j.segment_description,
-  j.management_level,
-  j.segment,
-  o.level_1,
-  o.level_2,
-  o.level_3,
-  o.level_4,
-  l.office_scale,
-  l.location_status,
-  pa.current_days_of_placement,
-  pa.hire_date,
-  pw.home_allocation_percent,
-  -- Adding the IS_VISITOR column
-  CASE 
-    WHEN b.office_number <> pw.work_location_1_code THEN 'Yes'
-    ELSE 'No'
-  END AS IS_VISITOR,
-  -- Adding the IS_NOT_LOCATION_CODE_OFFICE column
-  CASE 
-    WHEN b.office_number <> l.location_code THEN 'Yes'
-    ELSE 'No'
-  END AS IS_NOT_LOCATION_CODE_OFFICE
-FROM
-  HRDW.REAL_ESTATE.badge_fact b
-JOIN
-   HRDW.EMPLOYEE_ORG.PERSON_FACT  pf ON pf.person_fact_key = b.person_fact_key
-JOIN
-  HRDW.EMPLOYEE_ORG.LOCATION l ON pf.location_key = l.location_key
-JOIN
-  HRDW.EMPLOYEE_ORG.ORGANIZATION o ON o.org_key = pf.org_key 
-JOIN
-  HRDW.EMPLOYEE_ORG.PERSON_WORK_ARRANGEMENTS pw ON pw.work_arrangements_key = pf.work_arrangements_key
-JOIN
-  HRDW.EMPLOYEE_ORG.PERSON_INFO pi ON pi.person_info_key = pf.person_info_key
-JOIN
-  HRDW.EMPLOYEE_ORG.GRADE g ON g.grade_key = pf.grade_key
-JOIN
-  HRDW.EMPLOYEE_ORG.JOB j ON j.job_key = pf.job_key
-JOIN
-  HRDW.EMPLOYEE_ORG.PERSON_ASSIGNMENT pa ON pa.assignment_key = pf.assignment_key
-WHERE
-  b.date >= '2024-04-05'
-  AND b.office_number = '0055'
-  AND pf.active_ind = 1;
+def optimize_seat_count(badge_df, office_number, total_office_capacity):
+    # Filter for weekdays only
+    badge_df['date'] = pd.to_datetime(badge_df['date'])
+    badge_df['day_of_week'] = badge_df['date'].dt.day_name()
+    weekday_df = badge_df[~badge_df['day_of_week'].isin(['Saturday', 'Sunday'])]
+    
+    # Count unique employees per day
+    daily_occupancy = weekday_df.groupby('date')['employee_number'].nunique().reset_index()
+    daily_occupancy['occupancy_rate'] = daily_occupancy['employee_number'] / total_office_capacity * 100
+    
+    # Analyze occupancy metrics
+    def analyze_seat_count(seat_count):
+        daily_occupancy_local = daily_occupancy.copy()
+        daily_occupancy_local['is_empty'] = daily_occupancy_local['occupancy_rate'] <= 25
+        daily_occupancy_local['is_overfull'] = daily_occupancy_local['occupancy_rate'] >= 90
+        daily_occupancy_local['is_over_capacity'] = daily_occupancy_local['occupancy_rate'] > 100
+        
+        return {
+            'seat_count': seat_count,
+            'days_empty': daily_occupancy_local['is_empty'].sum(),
+            'days_overfull': daily_occupancy_local['is_overfull'].sum(),
+            'days_over_capacity': daily_occupancy_local['is_over_capacity'].sum(),
+            'total_analysis_days': len(daily_occupancy_local)
+        }
+    
+    # Try different seat count scenarios
+    scenarios = []
+    for seat_count in range(int(daily_occupancy['employee_number'].max() * 0.7), 
+                             int(daily_occupancy['employee_number'].max() * 1.3)):
+        scenarios.append(analyze_seat_count(seat_count))
+    
+    # Convert to DataFrame for easy analysis
+    scenarios_df = pd.DataFrame(scenarios)
+    
+    # Find optimal scenario
+    optimal_scenario = scenarios_df.sort_values(by=['days_overfull', 'days_over_capacity']).iloc[0]
+    
+    return daily_occupancy, optimal_scenario, scenarios_df
 
+def visualize_seat_analysis(daily_occupancy, optimal_scenario, scenarios_df):
+    # Multiple visualization techniques
+    plt.figure(figsize=(20,15))
+    
+    # 1. Occupancy Rate Over Time (Line Chart)
+    plt.subplot(2, 2, 1)
+    plt.plot(daily_occupancy['date'], daily_occupancy['occupancy_rate'])
+    plt.title('Office Occupancy Rate Over Time')
+    plt.xlabel('Date')
+    plt.ylabel('Occupancy Rate (%)')
+    plt.xticks(rotation=45)
+    
+    # 2. Seat Count Optimization Scatter Plot
+    plt.subplot(2, 2, 2)
+    plt.scatter(scenarios_df['seat_count'], scenarios_df['days_overfull'], 
+                label='Days Overfull', alpha=0.7)
+    plt.scatter(scenarios_df['seat_count'], scenarios_df['days_over_capacity'], 
+                label='Days Over Capacity', alpha=0.7)
+    plt.title('Seat Count vs Overcrowding Days')
+    plt.xlabel('Number of Seats')
+    plt.ylabel('Number of Days')
+    plt.legend()
+    
+    # 3. Boxplot of Occupancy Rates
+    plt.subplot(2, 2, 3)
+    daily_occupancy['occupancy_rate'].plot(kind='box')
+    plt.title('Distribution of Occupancy Rates')
+    plt.ylabel('Occupancy Rate (%)')
+    
+    # 4. Histogram of Daily Occupancy
+    plt.subplot(2, 2, 4)
+    daily_occupancy['occupancy_rate'].hist(bins=20)
+    plt.title('Histogram of Daily Occupancy Rates')
+    plt.xlabel('Occupancy Rate (%)')
+    plt.ylabel('Frequency')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return plt
 
-'''
+# Main execution
+def main(badge_df, office_number, total_office_capacity):
+    # Perform seat optimization analysis
+    daily_occupancy, optimal_scenario, scenarios_df = optimize_seat_count(
+        badge_df, office_number, total_office_capacity
+    )
+    
+    # Visualize the results
+    plot = visualize_seat_analysis(daily_occupancy, optimal_scenario, scenarios_df)
+    
+    # Print optimal scenario details
+    print("Optimal Seat Count Analysis:")
+    print(f"Recommended Seats: {optimal_scenario['seat_count']}")
+    print(f"Total Analysis Days: {optimal_scenario['total_analysis_days']}")
+    print(f"Days Feeling Empty (≤25% capacity): {optimal_scenario['days_empty']}")
+    print(f"Days Feeling Overfull (≥90% capacity): {optimal_scenario['days_overfull']}")
+    print(f"Days Over Capacity (>100% capacity): {optimal_scenario['days_over_capacity']}")
+    
+    return daily_occupancy, optimal_scenario, scenarios_df
 
-# Load data using the full query
-badge_spdf = spark.read.format("snowflake") \
-    .options(**sfOptions) \
-    .option("query", full_query) \
-    .option("sfWarehouse", "BIZ_REPORTING_WH") \
-    .load()
-
-# Convert to Pandas DataFrame
-badge_df = badge_spdf.toPandas()
-
-# Display the shape of the DataFrame
-print('Shape of combined data is', badge_df.shape)
-
-# Print the resulting DataFrame
-print(badge_df)
+# Execute the analysis
+# Assuming badge_df is already loaded and total_office_capacity is known
+# total_office_capacity = X  # Replace X with the total capacity of the office
+# result_occupancy, result_optimal, result_scenarios = main(badge_df, '0055', total_office_capacity)
