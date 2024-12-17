@@ -93,4 +93,119 @@ WHERE
     r.OFFICE_NUMBER = '0055'
 
 
+-----------
 
+new script
+
+------------
+
+import pandas as pd
+
+# First query (with multiple joins)
+full_query = '''
+SELECT
+  b.date,
+  b.employee_number,
+  b.office_number,
+  l.location_code,
+  o.cost_center_code,
+  pw.work_location_1_code,
+  g.grade_equivalent,
+  j.job_family,
+  j.segment_description,
+  j.management_level,
+  j.segment,
+  o.level_1,
+  o.level_2,
+  o.level_3,
+  o.level_4,
+  l.office_scale,
+  l.location_status,
+  pa.current_days_of_placement,
+  pa.hire_date,
+  pw.home_allocation_percent,
+  CASE 
+    WHEN b.office_number <> pw.work_location_1_code THEN 'Yes'
+    ELSE 'No'
+  END AS IS_VISITOR,
+  CASE 
+    WHEN b.office_number <> l.location_code THEN 'Yes'
+    ELSE 'No'
+  END AS IS_NOT_LOCATION_CODE_OFFICE
+FROM
+  HRDW.REAL_ESTATE.badge_fact b
+JOIN
+   HRDW.EMPLOYEE_ORG.PERSON_FACT  pf ON pf.person_fact_key = b.person_fact_key
+JOIN
+  HRDW.EMPLOYEE_ORG.LOCATION l ON pf.location_key = l.location_key
+JOIN
+  HRDW.EMPLOYEE_ORG.ORGANIZATION o ON o.org_key = pf.org_key 
+JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_WORK_ARRANGEMENTS pw ON pw.work_arrangements_key = pf.work_arrangements_key
+JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_INFO pi ON pi.person_info_key = pf.person_info_key
+JOIN
+  HRDW.EMPLOYEE_ORG.GRADE g ON g.grade_key = pf.grade_key
+JOIN
+  HRDW.EMPLOYEE_ORG.JOB j ON j.job_key = pf.job_key
+JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_ASSIGNMENT pa ON pa.assignment_key = pf.assignment_key
+WHERE
+  b.date = '2024-07-16'
+  AND b.office_number = '0055'
+  AND pf.active_ind = 1
+'''
+
+# Second query (with fewer joins)
+simple_query = '''
+SELECT
+    r.DATE,
+    r.EMPLOYEE_NUMBER,
+    r.OFFICE_NUMBER
+FROM
+    HRDW.REAL_ESTATE.BADGE_FACT r
+WHERE
+    r.DATE = '2024-07-16' AND
+    r.OFFICE_NUMBER = '0055'
+'''
+
+# Load data using the first query
+badge_full_spdf = spark.read.format("snowflake") \
+    .options(**sfOptions) \
+    .option("query", full_query) \
+    .option("sfWarehouse", "BIZ_REPORTING_WH") \
+    .load()
+
+# Load data using the second query
+badge_simple_spdf = spark.read.format("snowflake") \
+    .options(**sfOptions) \
+    .option("query", simple_query) \
+    .option("sfWarehouse", "BIZ_REPORTING_WH") \
+    .load()
+
+# Convert to Pandas DataFrames
+badge_full_df = badge_full_spdf.toPandas()
+badge_simple_df = badge_simple_spdf.toPandas()
+
+# Create a combined key for comparison
+badge_full_df['combined_key'] = badge_full_df['date'].astype(str) + '_' + badge_full_df['employee_number'].astype(str) + '_' + badge_full_df['office_number'].astype(str)
+badge_simple_df['combined_key'] = badge_simple_df['DATE'].astype(str) + '_' + badge_simple_df['EMPLOYEE_NUMBER'].astype(str) + '_' + badge_simple_df['OFFICE_NUMBER'].astype(str)
+
+# Find rows in full query that are not in simple query
+full_not_in_simple = badge_full_df[~badge_full_df['combined_key'].isin(badge_simple_df['combined_key'])]
+
+# Find rows in simple query that are not in full query
+simple_not_in_full = badge_simple_df[~badge_simple_df['combined_key'].isin(badge_full_df['combined_key'])]
+
+# Print results
+print("Rows in full query dataframe not in simple query dataframe:")
+print(full_not_in_simple)
+print("\nNumber of rows in full query not in simple query:", len(full_not_in_simple))
+
+print("\n\nRows in simple query dataframe not in full query dataframe:")
+print(simple_not_in_full)
+print("\nNumber of rows in simple query not in full query:", len(simple_not_in_full))
+
+# Print total row counts for comparison
+print("\nTotal rows in full query dataframe:", len(badge_full_df))
+print("Total rows in simple query dataframe:", len(badge_simple_df))
