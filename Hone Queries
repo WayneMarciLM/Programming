@@ -1,0 +1,96 @@
+import pandas as pd
+
+# SQL query to fetch badge data and join with employee info
+full_query = '''
+SELECT
+  b.date,
+  b.employee_number,
+  b.office_number,
+  l.location_code,
+  o.cost_center_code,
+  pw.work_location_1_code,
+  g.grade_equivalent,
+  j.job_family,
+  j.segment_description,
+  j.management_level,
+  j.segment,
+  o.level_1,
+  o.level_2,
+  o.level_3,
+  o.level_4,
+  l.office_scale,
+  l.location_status,
+  pa.current_days_of_placement,
+  pa.hire_date,
+  pw.home_allocation_percent,
+  -- Adding the IS_VISITOR column
+  CASE 
+    WHEN b.office_number <> pw.work_location_1_code THEN 'Yes'
+    ELSE 'No'
+  END AS IS_VISITOR,
+  -- Adding the IS_NOT_LOCATION_CODE_OFFICE column
+  CASE 
+    WHEN b.office_number <> l.location_code THEN 'Yes'
+    ELSE 'No'
+  END AS IS_NOT_LOCATION_CODE_OFFICE
+FROM
+  HRDW.REAL_ESTATE.badge_fact b
+JOIN
+   HRDW.EMPLOYEE_ORG.PERSON_FACT  pf ON pf.person_fact_key = b.person_fact_key
+JOIN
+  HRDW.EMPLOYEE_ORG.LOCATION l ON pf.location_key = l.location_key
+JOIN
+  HRDW.EMPLOYEE_ORG.ORGANIZATION o ON o.org_key = pf.org_key 
+JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_WORK_ARRANGEMENTS pw ON pw.work_arrangements_key = pf.work_arrangements_key
+JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_INFO pi ON pi.person_info_key = pf.person_info_key
+JOIN
+  HRDW.EMPLOYEE_ORG.GRADE g ON g.grade_key = pf.grade_key
+JOIN
+  HRDW.EMPLOYEE_ORG.JOB j ON j.job_key = pf.job_key
+JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_ASSIGNMENT pa ON pa.assignment_key = pf.assignment_key
+WHERE
+  b.date >= '2024-04-05'
+  AND b.office_number = '0055'
+  AND pf.active_ind = 1;
+
+
+'''
+
+# Load data using the full query
+badge_spdf = spark.read.format("snowflake") \
+    .options(**sfOptions) \
+    .option("query", full_query) \
+    .option("sfWarehouse", "BIZ_REPORTING_WH") \
+    .load()
+
+# Convert to Pandas DataFrame
+badge_df = badge_spdf.toPandas()
+
+# Display the shape of the DataFrame
+print('Shape of combined data is', badge_df.shape)
+
+# Print the resulting DataFrame
+print(badge_df)
+
+
+
+--------------- 
+
+Other Query
+
+------------
+
+SELECT
+    r.DATE,
+    R.EMPLOYEE_NUMBER
+FROM
+    HRDW.REAL_ESTATE.BADGE_FACT r
+WHERE
+    r.DATE >= '2024-07-16' AND
+    r.OFFICE_NUMBER = '0055'
+
+
+
