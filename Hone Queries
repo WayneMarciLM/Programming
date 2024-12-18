@@ -212,3 +212,58 @@ def print_seat_analysis_report(results):
 # Example usage (uncomment and modify as needed)
 # results = analyze_office_seat_requirements(badge_spdf)
 # print_seat_analysis_report(results)
+
+
+(6) Spark Jobs
+Job 7 
+
+View
+(Stages: 1/1)
+
+Job 8 
+
+View
+(Stages: 1/1, 1 skipped)
+
+Job 9 
+
+View
+(Stages: 1/1, 2 skipped)
+
+Job 10 
+
+View
+(Stages: 1/1, 2 skipped)
+
+Job 11 
+
+View
+(Stages: 1/1, 3 skipped)
+
+Job 12 
+
+View
+(Stages: 1/1)
+
+detail from one of the skipped steps:
+
+org.apache.spark.sql.execution.SQLExecution$.$anonfun$withThreadLocalCaptured$7(SQLExecution.scala:824)
+com.databricks.util.LexicalThreadLocal$Handle.runWith(LexicalThreadLocal.scala:63)
+org.apache.spark.sql.execution.SQLExecution$.$anonfun$withThreadLocalCaptured$6(SQLExecution.scala:824)
+com.databricks.util.LexicalThreadLocal$Handle.runWith(LexicalThreadLocal.scala:63)
+org.apache.spark.sql.execution.SQLExecution$.$anonfun$withThreadLocalCaptured$5(SQLExecution.scala:824)
+scala.util.DynamicVariable.withValue(DynamicVariable.scala:62)
+org.apache.spark.sql.execution.SQLExecution$.$anonfun$withThreadLocalCaptured$4(SQLExecution.scala:823)
+scala.util.DynamicVariable.withValue(DynamicVariable.scala:62)
+org.apache.spark.sql.execution.SQLExecution$.$anonfun$withThreadLocalCaptured$3(SQLExecution.scala:822)
+com.databricks.sql.transaction.tahoe.ConcurrencyHelpers$.withOptimisticTransaction(ConcurrencyHelpers.scala:57)
+org.apache.spark.sql.execution.SQLExecution$.$anonfun$withThreadLocalCaptured$2(SQLExecution.scala:821)
+org.apache.spark.JobArtifactSet$.withActiveJobArtifactState(JobArtifactSet.scala:97)
+org.apache.spark.sql.execution.SQLExecution$.$anonfun$withThreadLocalCaptured$1(SQLExecution.scala:805)
+java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768)
+org.apache.spark.util.threads.SparkThreadLocalCapturingRunnable.$anonfun$run$1(SparkThreadLocalForwardingThreadPoolExecutor.scala:157)
+scala.runtime.java8.JFunction0$mcV$sp.apply(JFunction0$mcV$sp.java:23)
+com.databricks.spark.util.IdentityClaim$.withClaim(IdentityClaim.scala:48)
+org.apache.spark.util.threads.SparkThreadLocalCapturingHelper.$anonfun$runWithCaptured$4(SparkThreadLocalForwardingThreadPoolExecutor.scala:113)
+com.databricks.unity.UCSEphemeralState$Handle.runWith(UCSEphemeralState.scala:51)
+org.apache.spark.util.threads.SparkThreadLocalCapturingHelper.runWithCaptured(SparkThreadLocalForwardingThreadPoolExecutor.scala:112)
