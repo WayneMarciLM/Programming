@@ -1,71 +1,214 @@
+import pyspark.sql.functions as F
+import pyspark.sql.window as W
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import json
 
-# SQL query to fetch badge data and join with employee info
-full_query = '''
-SELECT
-  b.date,
-  b.employee_number,
-  b.office_number,
-  l.location_code,
-  o.cost_center_code,
-  pw.work_location_1_code,
-  g.grade_equivalent,
-  j.job_family,
-  j.segment_description,
-  j.management_level,
-  j.segment,
-  o.level_1,
-  o.level_2,
-  o.level_3,
-  o.level_4,
-  l.office_scale,
-  l.location_status,
-  pa.current_days_of_placement,
-  pa.hire_date,
-  pw.home_allocation_percent,
-  CASE 
-    WHEN b.office_number <> pw.work_location_1_code THEN 'Yes'
-    ELSE 'No'
-  END AS IS_VISITOR,
-  CASE 
-    WHEN b.office_number <> l.location_code THEN 'Yes'
-    ELSE 'No'
-  END AS IS_NOT_LOCATION_CODE_OFFICE
-FROM
-  HRDW.REAL_ESTATE.badge_fact b
-LEFT JOIN
-   HRDW.EMPLOYEE_ORG.PERSON_FACT  pf ON pf.person_fact_key = b.person_fact_key
-LEFT JOIN
-  HRDW.EMPLOYEE_ORG.LOCATION l ON pf.location_key = l.location_key
-LEFT JOIN
-  HRDW.EMPLOYEE_ORG.ORGANIZATION o ON o.org_key = pf.org_key 
-LEFT JOIN
-  HRDW.EMPLOYEE_ORG.PERSON_WORK_ARRANGEMENTS pw ON pw.work_arrangements_key = pf.work_arrangements_key
-LEFT JOIN
-  HRDW.EMPLOYEE_ORG.PERSON_INFO pi ON pi.person_info_key = pf.person_info_key
-LEFT JOIN
-  HRDW.EMPLOYEE_ORG.GRADE g ON g.grade_key = pf.grade_key
-LEFT JOIN
-  HRDW.EMPLOYEE_ORG.JOB j ON j.job_key = pf.job_key
-LEFT JOIN
-  HRDW.EMPLOYEE_ORG.PERSON_ASSIGNMENT pa ON pa.assignment_key = pf.assignment_key
-WHERE
-  b.date >= '2024-07-16'
-  AND b.office_number = '0055'
-'''
+def analyze_office_seat_requirements(badge_spdf):
+    """
+    Comprehensive analysis of office seat requirements and capacity utilization
+    
+    Args:
+        badge_spdf (spark.DataFrame): Spark DataFrame with badge swipe data
+    
+    Returns:
+        dict: Detailed analysis of seat requirements and capacity utilization
+    """
+    # Create a unique daily employee presence identifier
+    daily_presence = badge_spdf.select(
+        F.col('date'),
+        F.concat_ws('_', F.col('date'), F.col('employee_number'), F.col('office_number')).alias('daily_employee_id')
+    )
+    
+    # Count distinct employees per day
+    daily_occupancy = daily_presence.groupBy('date') \
+        .agg(F.countDistinct('daily_employee_id').alias('daily_employees')) \
+        .orderBy('date')
+    
+    # Convert to Pandas for analysis
+    daily_occupancy_pdf = daily_occupancy.toPandas()
+    daily_occupancy_pdf['date'] = pd.to_datetime(daily_occupancy_pdf['date'])
+    
+    # Window function to get total number of employees in the office
+    total_employees = badge_spdf.select(F.countDistinct('employee_number')).first()[0]
+    
+    # Calculate percentiles of daily occupancy
+    percentiles = [0.75, 0.80, 0.85, 0.90, 0.95]
+    seat_analysis = {}
+    
+    def visualize_occupancy_over_time(daily_occupancy_pdf, percentile, seats):
+        """
+        Create visualizations for occupancy over time
+        """
+        plt.figure(figsize=(15, 10))
+        
+        # Calculate percent full
+        daily_occupancy_pdf['percent_full'] = daily_occupancy_pdf['daily_employees'] / seats * 100
+        
+        # Identify different day types
+        full_days = daily_occupancy_pdf[(daily_occupancy_pdf['percent_full'] >= 65) & (daily_occupancy_pdf['percent_full'] <= 85)]
+        empty_days = daily_occupancy_pdf[daily_occupancy_pdf['percent_full'] < 30]
+        over_capacity_days = daily_occupancy_pdf[daily_occupancy_pdf['percent_full'] > 100]
+        
+        # Plot 1: Daily Employees vs Seat Count
+        plt.subplot(2, 2, 1)
+        plt.plot(daily_occupancy_pdf['date'], daily_occupancy_pdf['daily_employees'], label='Daily Employees')
+        plt.axhline(y=seats, color='r', linestyle='--', label=f'Seat Count ({seats})')
+        plt.title(f'{percentile*100}% Percentile - Daily Employees vs Seat Count')
+        plt.xlabel('Date')
+        plt.ylabel('Number of Employees')
+        plt.legend()
+        
+        # Plot 2: Occupancy Breakdown
+        plt.subplot(2, 2, 2)
+        day_types = {
+            'Normal Days': len(daily_occupancy_pdf) - len(full_days) - len(empty_days) - len(over_capacity_days),
+            'Full Days (65-85%)': len(full_days),
+            'Empty Days (<30%)': len(empty_days),
+            'Over Capacity Days': len(over_capacity_days)
+        }
+        plt.pie(day_types.values(), labels=day_types.keys(), autopct='%1.1f%%')
+        plt.title(f'{percentile*100}% Percentile - Day Type Distribution')
+        
+        # Plot 3: Daily Occupancy Percentage
+        plt.subplot(2, 2, 3)
+        plt.plot(daily_occupancy_pdf['date'], daily_occupancy_pdf['percent_full'])
+        plt.axhline(y=65, color='g', linestyle='--', label='Lower Full Threshold')
+        plt.axhline(y=85, color='g', linestyle='--', label='Upper Full Threshold')
+        plt.axhline(y=100, color='r', linestyle='--', label='Full Capacity')
+        plt.title('Daily Occupancy Percentage')
+        plt.xlabel('Date')
+        plt.ylabel('Occupancy (%)')
+        plt.legend()
+        
+        # Plot 4: Occupancy Trend
+        plt.subplot(2, 2, 4)
+        plt.scatter(full_days['date'], full_days['percent_full'], label='Full Days', color='orange')
+        plt.scatter(empty_days['date'], empty_days['percent_full'], label='Empty Days', color='blue')
+        plt.scatter(over_capacity_days['date'], over_capacity_days['percent_full'], label='Over Capacity', color='red')
+        plt.title('Occupancy Trend')
+        plt.xlabel('Date')
+        plt.ylabel('Occupancy (%)')
+        plt.legend()
+        
+        plt.tight_layout()
+        plt.suptitle(f'Office Occupancy Analysis - {percentile*100}% Percentile', fontsize=16)
+        plt.subplots_adjust(top=0.9)
+        
+        # Save the plot
+        plt.savefig(f'office_occupancy_analysis_{int(percentile*100)}percentile.png')
+        plt.close()
+    
+    for percentile in percentiles:
+        # Calculate seat count based on percentile
+        seats = int(np.percentile(daily_occupancy_pdf['daily_employees'], percentile * 100))
+        
+        # Create visualizations
+        visualize_occupancy_over_time(daily_occupancy_pdf, percentile, seats)
+        
+        # Analyze capacity utilization
+        occupancy_df = daily_occupancy_pdf.copy()
+        occupancy_df['percent_full'] = occupancy_df['daily_employees'] / seats * 100
+        
+        # Count days in different occupancy states
+        full_days = len(occupancy_df[(occupancy_df['percent_full'] >= 65) & (occupancy_df['percent_full'] <= 85)])
+        empty_days = len(occupancy_df[occupancy_df['percent_full'] < 30])
+        over_capacity_days = len(occupancy_df[occupancy_df['percent_full'] > 100])
+        
+        # Headcount change scenarios
+        headcount_scenarios = [0.05, 0.10, 0.15, 0.20]
+        scenario_analysis = {}
+        
+        for change in headcount_scenarios:
+            # Increase scenario
+            increase_seats = int(seats * (1 + change))
+            increase_occupancy_df = occupancy_df.copy()
+            increase_occupancy_df['percent_full'] = increase_occupancy_df['daily_employees'] / increase_seats * 100
+            increase_full_days = len(increase_occupancy_df[(increase_occupancy_df['percent_full'] >= 65) & (increase_occupancy_df['percent_full'] <= 85)])
+            increase_empty_days = len(increase_occupancy_df[increase_occupancy_df['percent_full'] < 30])
+            increase_over_capacity_days = len(increase_occupancy_df[increase_occupancy_df['percent_full'] > 100])
+            
+            # Decrease scenario
+            decrease_seats = int(seats * (1 - change))
+            decrease_occupancy_df = occupancy_df.copy()
+            decrease_occupancy_df['percent_full'] = decrease_occupancy_df['daily_employees'] / decrease_seats * 100
+            decrease_full_days = len(decrease_occupancy_df[(decrease_occupancy_df['percent_full'] >= 65) & (decrease_occupancy_df['percent_full'] <= 85)])
+            decrease_empty_days = len(decrease_occupancy_df[decrease_occupancy_df['percent_full'] < 30])
+            decrease_over_capacity_days = len(decrease_occupancy_df[decrease_occupancy_df['percent_full'] > 100])
+            
+            scenario_analysis[change] = {
+                'increase': {
+                    'seats': increase_seats,
+                    'full_days': increase_full_days,
+                    'empty_days': increase_empty_days,
+                    'over_capacity_days': increase_over_capacity_days
+                },
+                'decrease': {
+                    'seats': decrease_seats,
+                    'full_days': decrease_full_days,
+                    'empty_days': decrease_empty_days,
+                    'over_capacity_days': decrease_over_capacity_days
+                }
+            }
+        
+        seat_analysis[percentile] = {
+            'recommended_seats': seats,
+            'total_days': len(daily_occupancy_pdf),
+            'full_days': full_days,
+            'empty_days': empty_days,
+            'over_capacity_days': over_capacity_days,
+            'headcount_scenarios': scenario_analysis
+        }
+    
+    return {
+        'total_employees': total_employees,
+        'seat_analysis': seat_analysis
+    }
 
-# Load data using the full query
-badge_spdf = spark.read.format("snowflake") \
-    .options(**sfOptions) \
-    .option("query", full_query) \
-    .option("sfWarehouse", "BIZ_REPORTING_WH") \
-    .load()
+def print_seat_analysis_report(results):
+    """
+    Generate a user-friendly report of the seat analysis
+    
+    Args:
+        results (dict): Seat analysis results
+    """
+    print("\n===== OFFICE SEATING ANALYSIS REPORT =====")
+    print(f"Total Unique Employees in Office: {results['total_employees']}\n")
+    
+    print("Seat Requirement Analysis by Percentile:")
+    print("-" * 50)
+    
+    for percentile, analysis in results['seat_analysis'].items():
+        print(f"\n{int(percentile*100)}th Percentile Analysis:")
+        print(f"Recommended Seats: {analysis['recommended_seats']}")
+        print(f"Total Days Analyzed: {analysis['total_days']}")
+        print(f"Days Feeling Full (65-85% capacity): {analysis['full_days']} " +
+              f"({analysis['full_days']/analysis['total_days']*100:.2f}%)")
+        print(f"Days Feeling Empty (<30% capacity): {analysis['empty_days']} " +
+              f"({analysis['empty_days']/analysis['total_days']*100:.2f}%)")
+        print(f"Days Over Capacity: {analysis['over_capacity_days']} " +
+              f"({analysis['over_capacity_days']/analysis['total_days']*100:.2f}%)")
+        
+        print("\nHeadcount Change Scenarios:")
+        for change, scenario in analysis['headcount_scenarios'].items():
+            print(f"\n{change*100}% Headcount Change:")
+            
+            print("  Seat Increase Scenario:")
+            print(f"    Seats: {scenario['increase']['seats']}")
+            print(f"    Full Days: {scenario['increase']['full_days']}")
+            print(f"    Empty Days: {scenario['increase']['empty_days']}")
+            print(f"    Over Capacity Days: {scenario['increase']['over_capacity_days']}")
+            
+            print("  Seat Decrease Scenario:")
+            print(f"    Seats: {scenario['decrease']['seats']}")
+            print(f"    Full Days: {scenario['decrease']['full_days']}")
+            print(f"    Empty Days: {scenario['decrease']['empty_days']}")
+            print(f"    Over Capacity Days: {scenario['decrease']['over_capacity_days']}")
+    
+    print("\n===== END OF REPORT =====")
 
-# Convert to Pandas DataFrame
-badge_df = badge_spdf.toPandas()
-
-# Display the shape of the DataFrame
-print('Shape of combined data is', badge_df.shape)
-
-# Print the resulting DataFrame
-print(badge_df)
+# Example usage (uncomment and modify as needed)
+# results = analyze_office_seat_requirements(badge_spdf)
+# print_seat_analysis_report(results)
