@@ -1,0 +1,499 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Assuming badge_df is already created as in your example
+
+# 1. Calculate Daily Occupancy
+badge_df['date'] = pd.to_datetime(badge_df['date']).dt.date
+badge_df['unique_swipe'] = badge_df['date'].astype(str) + '_' + badge_df['employee_number'].astype(str) + '_' + badge_df['office_number'].astype(str)
+daily_occupancy = badge_df.groupby('date')['unique_swipe'].nunique().reset_index(name='occupancy')
+daily_occupancy = daily_occupancy.sort_values(by='occupancy', ascending=False)
+
+# Find the busiest day and the least number of seats needed
+busiest_day = daily_occupancy.iloc[0]
+least_seats_needed = busiest_day['occupancy']
+
+print(f"Busiest Day: {busiest_day['date']}, Occupancy: {least_seats_needed}")
+print(f"The least number of seats needed based on the busiest day is: {least_seats_needed}\n")
+
+# 2. Calculate Seat Counts for Different Percentiles
+percentiles = [0.95, 0.90, 0.85, 0.80, 0.75]
+percentile_seats = {}
+for p in percentiles:
+    seats = int(np.ceil(daily_occupancy['occupancy'].quantile(p)))
+    percentile_seats[p] = seats
+
+print("Seat counts for different percentiles:")
+for p, seats in percentile_seats.items():
+    print(f"{int(p*100)}th Percentile: {seats} seats")
+print("\n")
+
+# 3. Analyze Capacity Metrics for Each Percentile
+capacity_analysis = {}
+for p, seat_count in percentile_seats.items():
+    analysis = {}
+    analysis['seat_count'] = seat_count
+
+    # Calculate daily capacity percentage
+    daily_occupancy['capacity_percentage'] = (daily_occupancy['occupancy'] / seat_count) * 100
+
+    # Define capacity categories
+    def categorize_capacity(percentage):
+        if percentage > 100:
+            return 'Over Capacity'
+        elif 86 <= percentage <= 100:
+            return 'Full'
+        elif 65 <= percentage <= 85:
+            return 'Vibrant'
+        elif 30 <= percentage <= 64:
+            return 'Regular'
+        else:
+            return 'Empty'
+
+    daily_occupancy['capacity_category'] = daily_occupancy['capacity_percentage'].apply(categorize_capacity)
+
+    # Count days in each category
+    analysis['days_over_capacity'] = daily_occupancy[daily_occupancy['capacity_category'] == 'Over Capacity'].shape[0]
+    analysis['days_full'] = daily_occupancy[daily_occupancy['capacity_category'] == 'Full'].shape[0]
+    analysis['days_vibrant'] = daily_occupancy[daily_occupancy['capacity_category'] == 'Vibrant'].shape[0]
+    analysis['days_regular'] = daily_occupancy[daily_occupancy['capacity_category'] == 'Regular'].shape[0]
+    analysis['days_empty'] = daily_occupancy[daily_occupancy['capacity_category'] == 'Empty'].shape[0]
+
+    # Detailed metrics for over capacity days
+    over_capacity_data = daily_occupancy[daily_occupancy['capacity_category'] == 'Over Capacity']
+    if not over_capacity_data.empty:
+        analysis['avg_over_capacity'] = (over_capacity_data['occupancy'] - seat_count).mean()
+        analysis['min_over_capacity'] = (over_capacity_data['occupancy'] - seat_count).min()
+        analysis['max_over_capacity'] = (over_capacity_data['occupancy'] - seat_count).max()
+        analysis['std_over_capacity'] = (over_capacity_data['occupancy'] - seat_count).std()
+    else:
+        analysis['avg_over_capacity'] = 0
+        analysis['min_over_capacity'] = 0
+        analysis['max_over_capacity'] = 0
+        analysis['std_over_capacity'] = 0
+
+    capacity_analysis[p] = analysis
+
+print("Capacity analysis for different percentiles:")
+for p, analysis in capacity_analysis.items():
+    print(f"--- {int(p*100)}th Percentile (Seat Count: {analysis['seat_count']}) ---")
+    print(f"  Days Over Capacity: {analysis['days_over_capacity']}")
+    if analysis['days_over_capacity'] > 0:
+        print(f"    Avg Over Capacity: {analysis['avg_over_capacity']:.2f}")
+        print(f"    Min Over Capacity: {analysis['min_over_capacity']:.2f}")
+        print(f"    Max Over Capacity: {analysis['max_over_capacity']:.2f}")
+        print(f"    Std Dev Over Capacity: {analysis['std_over_capacity']:.2f}")
+    print(f"  Days Full (86%-100%): {analysis['days_full']}")
+    print(f"  Days Vibrant (65%-85%): {analysis['days_vibrant']}")
+    print(f"  Regular Days (30%-64%): {analysis['days_regular']}")
+    print(f"  Days Empty (<29%): {analysis['days_empty']}")
+    print("\n")
+
+# 4. Project Impact of Headcount Changes
+headcount_changes = [0.05, 0.10, 0.15, 0.20, -0.05, -0.10, -0.15, -0.20]
+headcount_projection = {}
+
+for p, analysis in capacity_analysis.items():
+    seat_count = analysis['seat_count']
+    projection_for_percentile = {}
+    for change in headcount_changes:
+        new_headcount_multiplier = 1 + change
+        projected_capacity_analysis = {}
+
+        # Project daily occupancy based on headcount change (simplification - assuming linear relationship)
+        projected_daily_occupancy = daily_occupancy.copy()
+        projected_daily_occupancy['projected_occupancy'] = (daily_occupancy['occupancy'] * new_headcount_multiplier).round()
+        projected_daily_occupancy['projected_capacity_percentage'] = (projected_daily_occupancy['projected_occupancy'] / seat_count) * 100
+        projected_daily_occupancy['projected_capacity_category'] = projected_daily_occupancy['projected_capacity_percentage'].apply(categorize_capacity)
+
+        projected_capacity_analysis['days_over_capacity'] = projected_daily_occupancy[projected_daily_occupancy['projected_capacity_category'] == 'Over Capacity'].shape[0]
+        projected_capacity_analysis['days_full'] = projected_daily_occupancy[projected_daily_occupancy['projected_capacity_category'] == 'Full'].shape[0]
+        projected_capacity_analysis['days_vibrant'] = projected_daily_occupancy[projected_daily_occupancy['projected_capacity_category'] == 'Vibrant'].shape[0]
+        projected_capacity_analysis['days_regular'] = projected_daily_occupancy[projected_daily_occupancy['projected_capacity_category'] == 'Regular'].shape[0]
+        projected_capacity_analysis['days_empty'] = projected_daily_occupancy[projected_daily_occupancy['projected_capacity_category'] == 'Empty'].shape[0]
+
+        projection_for_percentile[f"{int(change*100)}% Change"] = projected_capacity_analysis
+    headcount_projection[p] = projection_for_percentile
+
+print("Headcount change impact on capacity:")
+for p, projections in headcount_projection.items():
+    print(f"--- {int(p*100)}th Percentile Seat Count: {capacity_analysis[p]['seat_count']} ---")
+    for change, metrics in projections.items():
+        print(f"  Headcount Change: {change}")
+        print(f"    Projected Days Over Capacity: {metrics['days_over_capacity']}")
+        print(f"    Projected Days Full: {metrics['days_full']}")
+        print(f"    Projected Days Vibrant: {metrics['days_vibrant']}")
+        print(f"    Projected Days Regular: {metrics['days_regular']}")
+        print(f"    Projected Days Empty: {metrics['days_empty']}")
+    print("\n")
+
+# 5. Visualizations
+
+# 5.1 Daily Occupancy
+plt.figure(figsize=(12, 6))
+sns.lineplot(x='date', y='occupancy', data=daily_occupancy)
+plt.title('Daily Office Occupancy')
+plt.xlabel('Date')
+plt.ylabel('Occupancy')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# 5.2 Days Over Capacity Over Time for Each Percentile
+plt.figure(figsize=(12, 6))
+for p in percentiles:
+    seat_count = percentile_seats[p]
+    daily_occupancy['capacity_percentage'] = (daily_occupancy['occupancy'] / seat_count) * 100
+    daily_occupancy['is_over_capacity'] = daily_occupancy['capacity_percentage'] > 100
+    over_capacity_days = daily_occupancy[daily_occupancy['is_over_capacity']]
+    sns.histplot(over_capacity_days['date'], kde=False, label=f'{int(p*100)}th Percentile')
+plt.title('Days Over Capacity Over Time')
+plt.xlabel('Date')
+plt.ylabel('Number of Days')
+plt.legend(title='Percentile')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# 5.3 Days Feeling Full Over Time for Each Percentile
+plt.figure(figsize=(12, 6))
+for p in percentiles:
+    seat_count = percentile_seats[p]
+    daily_occupancy['capacity_percentage'] = (daily_occupancy['occupancy'] / seat_count) * 100
+    feeling_full_days = daily_occupancy[(daily_occupancy['capacity_percentage'] >= 86) & (daily_occupancy['capacity_percentage'] <= 100)]
+    sns.histplot(feeling_full_days['date'], kde=False, label=f'{int(p*100)}th Percentile')
+plt.title('Days Feeling Full Over Time')
+plt.xlabel('Date')
+plt.ylabel('Number of Days')
+plt.legend(title='Percentile')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# 5.4 Days Feeling Empty Over Time for Each Percentile
+plt.figure(figsize=(12, 6))
+for p in percentiles:
+    seat_count = percentile_seats[p]
+    daily_occupancy['capacity_percentage'] = (daily_occupancy['occupancy'] / seat_count) * 100
+    feeling_empty_days = daily_occupancy[daily_occupancy['capacity_percentage'] < 29]
+    sns.histplot(feeling_empty_days['date'], kde=False, label=f'{int(p*100)}th Percentile')
+plt.title('Days Feeling Empty Over Time')
+plt.xlabel('Date')
+plt.ylabel('Number of Days')
+plt.legend(title='Percentile')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# 5.5 Seat Count and Capacity Category Distribution
+fig, axes = plt.subplots(len(percentiles), 1, figsize=(10, 6 * len(percentiles)))
+
+for i, p in enumerate(percentiles):
+    seat_count = percentile_seats[p]
+    daily_occupancy['capacity_percentage'] = (daily_occupancy['occupancy'] / seat_count) * 100
+    daily_occupancy['capacity_category'] = daily_occupancy['capacity_percentage'].apply(categorize_capacity)
+
+    category_counts = daily_occupancy['capacity_category'].value_counts()
+    category_counts.plot(kind='bar', ax=axes[i], color=['red', 'green', 'orange', 'blue', 'grey']) # Example colors
+    axes[i].set_title(f'{int(p*100)}th Percentile - Seat Count: {seat_count}')
+    axes[i].set_ylabel('Number of Days')
+    axes[i].tick_params(axis='x', rotation=45)
+
+plt.tight_layout()
+plt.show()
+content_copy
+download
+Use code with caution.
+Python
+
+Explanation:
+
+Data Preparation and Daily Occupancy:
+
+Converts the 'date' column to datetime objects.
+
+Creates a unique_swipe column to count distinct swipes per day.
+
+Groups by date and counts unique swipes to get daily occupancy.
+
+Identifies the busiest day and the corresponding occupancy.
+
+Calculate Seat Counts for Different Percentiles:
+
+Defines the percentiles to analyze.
+
+Uses quantile() to find the occupancy level at each percentile.
+
+np.ceil() rounds up to the nearest whole number for seat count.
+
+Analyze Capacity Metrics:
+
+Iterates through each percentile and its calculated seat count.
+
+Calculates the daily capacity percentage based on the seat count.
+
+Defines a function categorize_capacity to classify days into "Over Capacity", "Full", "Vibrant", "Regular", and "Empty" based on the capacity percentage.
+
+Counts the number of days in each capacity category.
+
+Calculates detailed statistics (average, min, max, std dev) for days over capacity.
+
+Project Impact of Headcount Changes:
+
+Defines a list of percentage changes for headcount.
+
+Iterates through each percentile and each headcount change.
+
+Simulates the impact of headcount changes on daily occupancy (simplified linear projection).
+
+Recalculates capacity percentages and categorizes days based on the projected occupancy.
+
+Stores the projected capacity metrics.
+
+Visualizations:
+
+Daily Occupancy: A line plot showing the trend of daily occupancy over time.
+
+Days Over Capacity Over Time: Histograms showing the distribution of days over capacity for each percentile.
+
+Days Feeling Full Over Time: Histograms showing the distribution of days feeling full for each percentile.
+
+Days Feeling Empty Over Time: Histograms showing the distribution of days feeling empty for each percentile.
+
+Seat Count and Capacity Category Distribution: Bar charts for each percentile, showing the number of days falling into each capacity category relative to the seat count for that percentile.
+
+Clean Output Explanation:
+
+The print() statements throughout the script are designed to provide a clear and understandable summary of the analysis:
+
+Busiest Day and Least Seats: Immediately tells you the peak demand and the absolute minimum seats needed.
+
+Seat Counts for Different Percentiles: Clearly lists the recommended seat count for each percentile target.
+
+Capacity Analysis: For each percentile, it breaks down:
+
+The seat count being considered.
+
+The number of days the office would be over capacity, feeling full, vibrant, regular, and empty.
+
+Detailed statistics about the days over capacity.
+
+Headcount Change Impact: Shows how changes in headcount could affect the capacity metrics for each percentile's seat count, allowing you to understand the sensitivity of each seating strategy to future headcount fluctuations.
+
+How to Use in Databricks:
+
+Ensure your badge_df is available as a Pandas DataFrame in your Databricks notebook. The provided Spark code and conversion to Pandas should handle this.
+
+Copy and paste the Python code into a cell in your Databricks notebook.
+
+Run the cell. The output and visualizations will be displayed in your notebook.
+
+Key Considerations and Potential Improvements:
+
+Headcount Projection: The headcount projection is a simplified linear model. In reality, the relationship between headcount and office occupancy might be more complex (e.g., hybrid work schedules, different attendance patterns). More sophisticated forecasting techniques could be used.
+
+Visualization Customization: You can further customize the visualizations using Matplotlib and Seaborn options (titles, labels, colors, etc.) for better presentation.
+
+Interactive Dashboards: For a more dynamic and user-friendly experience, consider using libraries like Plotly or creating a Databricks dashboard to present the findings.
+
+Assumptions: This analysis assumes that badge swipes accurately reflect office occupancy. If there are issues with badge data (e.g., forgotten badges, multiple swipes per person), the results might be affected.
+
+Specific Office Capacity: This script focuses on the demand based on badge swipes. It doesn't consider the actual physical capacity of the office (number of desks, meeting rooms, etc.). You might need to incorporate that information for a more comprehensive analysis.
+
+
+-----------
+
+
+
+Okay, let's get experimental! Here's a separate script that takes a more exploratory approach to your badge data, aiming to uncover interesting patterns and insights that could inform office decisions beyond just basic capacity planning.
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import timedelta
+
+# Assuming badge_df is already created as in your example
+
+# --- Experimental Office Insights ---
+
+print("\n--- Experimental Office Insights ---\n")
+
+# 1. Office Hotspot Analysis (Where are people from different teams going?)
+print("\n--- Office Hotspot Analysis ---")
+hotspot_data = badge_df.groupby(['office_number', 'job_family']).size().unstack(fill_value=0)
+print("Number of visits to different offices by Job Family:")
+print(hotspot_data)
+
+plt.figure(figsize=(12, 8))
+sns.heatmap(hotspot_data, annot=True, fmt='d', cmap='YlGnBu')
+plt.title('Office Hotspots by Job Family')
+plt.xlabel('Office Number')
+plt.ylabel('Job Family')
+plt.show()
+
+# Insight: This shows which job families frequent which offices. Could inform team seating or resource allocation in those offices.
+
+# 2. Visitor Pattern Analysis (Who visits whom, and when?)
+print("\n--- Visitor Pattern Analysis ---")
+visitor_visits = badge_df[badge_df['IS_VISITOR'] == 'Yes'].groupby(['date', 'employee_number', 'office_number']).size().reset_index(name='visits')
+visitor_counts_by_office = visitor_visits.groupby('office_number')['visits'].sum().sort_values(ascending=False)
+print("\nTotal Visitor Visits per Office:")
+print(visitor_counts_by_office)
+
+plt.figure(figsize=(10, 6))
+visitor_counts_by_office.plot(kind='bar')
+plt.title('Total Visitor Visits per Office')
+plt.xlabel('Office Number')
+plt.ylabel('Number of Visitor Visits')
+plt.show()
+
+# Insight: Identifies offices with high visitor traffic, potentially requiring more visitor resources.
+
+# 3. "Core Day" Analysis (Which days are most consistently used?)
+print("\n--- 'Core Day' Analysis ---")
+daily_active_employees = badge_df.groupby('date')['employee_number'].nunique()
+weekday_activity = daily_active_employees.groupby(daily_active_employees.index.day_name()).mean().sort_values(ascending=False)
+print("\nAverage Number of Active Employees per Weekday:")
+print(weekday_activity)
+
+plt.figure(figsize=(8, 6))
+weekday_activity.plot(kind='bar')
+plt.title('Average Active Employees per Weekday')
+plt.xlabel('Day of the Week')
+plt.ylabel('Average Number of Active Employees')
+plt.show()
+
+# Insight: Helps identify "core days" when office presence is highest, useful for scheduling important meetings or events.
+
+# 4. Work Arrangement vs. Office Usage
+print("\n--- Work Arrangement vs. Office Usage ---")
+work_arrangement_usage = badge_df.groupby(['work_location_1_code', 'office_number']).size().unstack(fill_value=0)
+print("\nOffice Usage by Primary Work Location:")
+print(work_arrangement_usage)
+
+# Analyze the diagonal (employees using their primary work location) vs. off-diagonal
+total_swipes = work_arrangement_usage.sum().sum()
+on_primary_swipes = np.trace(work_arrangement_usage)
+off_primary_swipes = total_swipes - on_primary_swipes
+print(f"\nPercentage of swipes at primary work location: {(on_primary_swipes / total_swipes) * 100:.2f}%")
+print(f"Percentage of swipes at other locations: {(off_primary_swipes / total_swipes) * 100:.2f}%")
+
+# Insight:  Helps understand if employees are primarily working from their assigned location or are frequently visiting other offices. Can validate work arrangement policies.
+
+# 5. Impact of Grade/Level on Office Choice
+print("\n--- Impact of Grade/Level on Office Choice ---")
+grade_office_preference = badge_df.groupby(['grade_equivalent', 'office_number']).size().unstack(fill_value=0)
+print("\nOffice Preference by Grade Level:")
+print(grade_office_preference)
+
+plt.figure(figsize=(12, 8))
+sns.heatmap(grade_office_preference, annot=True, fmt='d', cmap='viridis')
+plt.title('Office Preference by Grade Level')
+plt.xlabel('Office Number')
+plt.ylabel('Grade Equivalent')
+plt.show()
+
+# Insight:  Are certain grade levels more likely to use specific offices? This could be related to team locations, amenities, or other factors.
+
+# 6. Temporal Patterns of Office Entry/Exit (Requires more granular time data - Simulating with day)
+# **Note:** The current data only has the date, so we'll simulate this with the distribution of swipes across days. Ideally, you'd have timestamps.
+print("\n--- Temporal Patterns of Office Usage (Simulated with Daily Distribution) ---")
+daily_swipe_counts = badge_df.groupby(['date', 'office_number']).size().unstack(fill_value=0)
+daily_swipe_proportion = daily_swipe_counts.apply(lambda x: x / x.sum(), axis=0)
+print("\nProportion of Daily Swipes per Office:")
+print(daily_swipe_proportion.head()) # Showing the first few days
+
+# We could visualize this as a time series for each office if we had more granular time data.
+
+# Insight (with more granular data): Understanding when people enter and leave the office can help optimize resources (e.g., cafeteria, security).
+
+# 7. Co-location Analysis by Team (Cost Center)
+print("\n--- Co-location Analysis by Team (Cost Center) ---")
+team_presence = badge_df.groupby(['date', 'office_number', 'cost_center_code']).size().unstack(fill_value=0)
+# Calculate a simple co-location score: number of days at least 2 people from the same cost center are in the same office
+co_location_score = team_presence.groupby(['office_number', 'cost_center_code']).apply(lambda x: (x >= 2).any().sum())
+print("\nCo-location Score (Days with 2+ people from the same cost center):")
+print(co_location_score)
+
+# Insight: Identifies which teams are frequently co-located in specific offices, informing potential team seating arrangements.
+
+print("\n--- End of Experimental Office Insights ---")
+content_copy
+download
+Use code with caution.
+Python
+
+Explanation of Experimental Analyses:
+
+Office Hotspot Analysis:
+
+Examines which job families visit which offices.
+
+Useful for understanding inter-departmental interactions or where specific teams tend to work when not in their primary office.
+
+Could inform decisions about co-locating teams or placing resources relevant to certain job functions in specific offices.
+
+Visitor Pattern Analysis:
+
+Focuses on understanding visitor traffic between offices.
+
+Helps identify offices that act as hubs for visitors, potentially requiring more visitor amenities or reception support.
+
+"Core Day" Analysis:
+
+Determines which days of the week have the highest average office attendance.
+
+This is valuable for scheduling important meetings, company-wide events, or identifying days where a fully staffed office is most critical.
+
+Work Arrangement vs. Office Usage:
+
+Compares an employee's assigned work location with the offices they actually use.
+
+Helps validate hybrid work policies and understand if employees are adhering to their designated work arrangements. Significant deviation might indicate a need to re-evaluate work arrangements or office assignments.
+
+Impact of Grade/Level on Office Choice:
+
+Investigates whether there's a correlation between an employee's grade level and the offices they frequent.
+
+Could reveal preferences related to seniority, team locations, or office amenities that cater to different levels.
+
+Temporal Patterns of Office Entry/Exit (Simulated):
+
+Ideally, this would use timestamps. With only the date, we can only look at daily distribution.
+
+With more granular data, this would help understand peak usage times, allowing for better resource allocation (e.g., cafeteria staffing, security).
+
+Co-location Analysis by Team (Cost Center):
+
+Examines how often members of the same cost center are present in the same office on the same day.
+
+Provides insights for team-based seating arrangements, fostering collaboration, or identifying teams that naturally work closely together in the office.
+
+How These Insights Can Inform Decisions:
+
+Space Optimization: Identify underutilized or overutilized spaces based on hotspot and visitor analysis.
+
+Team Seating: Inform decisions about team neighborhoods based on co-location and hotspot analysis.
+
+Resource Allocation: Allocate resources (meeting rooms, collaboration spaces, specialized equipment) to offices that need them most based on usage patterns.
+
+Hybrid Work Policy Validation: Assess adherence to work arrangements and identify areas for improvement.
+
+Event Scheduling: Plan events and meetings on "core days" for maximum participation.
+
+Visitor Management: Optimize visitor reception and amenities in high-traffic visitor offices.
+
+Understanding Organizational Dynamics: Gain insights into how different teams and levels interact within the office space.
+
+To Use This Script:
+
+Ensure your badge_df is available.
+
+Copy and paste the code into a Databricks notebook cell.
+
+Run the cell.
+
+This "experimental" script encourages a broader look at the data, moving beyond simple capacity numbers to understand the dynamics of office usage and how it relates to different employee attributes and organizational structures. Remember that the insights gained from these analyses can be powerful tools for making informed decisions about your office environment.
