@@ -988,3 +988,13 @@ team_presence = badge_df.groupby(['DATE', 'OFFICE_NUMBER', 'COST_CENTER_CODE']).
 co_location_score = team_presence.groupby(['OFFICE_NUMBER', 'COST_CENTER_CODE']).apply(lambda x: (x >= 2).any().sum())
 print("\nCo-location Score (Days with 2+ people from the same cost center):")
 print(co_location_score)
+
+
+
+print("Columns in team_presence:", team_presence.columns)
+Columns in team_presence: Index(['0001-00148', '0001-00152', '0001-00196', '0001-00205', '0001-00214',
+       '0001-00329', '0001-00502', '0001-00721', '0001-00820', '0001-00821',
+       ...
+       '097J-04420', '097J-05269', '097J-05288', '097J-08467', '097J-12312',
+       '099H-00152', '099H-13514', '102S-04081', '102S-13523', '106S-06366'],
+      dtype='object', name='COST_CENTER_CODE', length=851)
