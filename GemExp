@@ -647,7 +647,127 @@ print('Shape of combined data is', badge_df.shape)
 
 # Print the resulting DataFrame
 print(badge_df)
+--------------
 
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import timedelta
+
+# Assuming badge_df is already created from the SQL query
+
+# Convert the 'DATE' column to datetime format
+badge_df['DATE'] = pd.to_datetime(badge_df['DATE'])
+
+# --- Experimental Office Insights ---
+
+print("\n--- Experimental Office Insights ---\n")
+
+# 1. Office Hotspot Analysis (Where are people from different teams going?)
+print("\n--- Office Hotspot Analysis ---")
+hotspot_data = badge_df.groupby(['OFFICE_NUMBER', 'JOB_FAMILY']).size().unstack(fill_value=0)
+print("Number of visits to different offices by Job Family:")
+print(hotspot_data)
+
+plt.figure(figsize=(12, 8))
+sns.heatmap(hotspot_data, annot=True, fmt='d', cmap='YlGnBu')
+plt.title('Office Hotspots by Job Family')
+plt.xlabel('Office Number')
+plt.ylabel('Job Family')
+plt.show()
+
+# Insight: This shows which job families frequent which offices. Could inform team seating or resource allocation in those offices.
+
+# 2. Visitor Pattern Analysis (Who visits whom, and when?)
+print("\n--- Visitor Pattern Analysis ---")
+visitor_visits = badge_df[badge_df['IS_VISITOR'] == 'Yes'].groupby(['DATE', 'EMPLOYEE_NUMBER', 'OFFICE_NUMBER']).size().reset_index(name='visits')
+visitor_counts_by_office = visitor_visits.groupby('OFFICE_NUMBER')['visits'].sum().sort_values(ascending=False)
+print("\nTotal Visitor Visits per Office:")
+print(visitor_counts_by_office)
+
+plt.figure(figsize=(10, 6))
+visitor_counts_by_office.plot(kind='bar')
+plt.title('Total Visitor Visits per Office')
+plt.xlabel('Office Number')
+plt.ylabel('Number of Visitor Visits')
+plt.show()
+
+# Insight: Identifies offices with high visitor traffic, potentially requiring more visitor resources.
+
+# 3. "Core Day" Analysis (Which days are most consistently used?)
+print("\n--- 'Core Day' Analysis ---")
+daily_active_employees = badge_df.groupby('DATE')['EMPLOYEE_NUMBER'].nunique()
+# Group by the day name of the index
+weekday_activity = daily_active_employees.groupby(daily_active_employees.index.day_name()).mean().sort_values(ascending=False)
+print("\nAverage Number of Active Employees per Weekday:")
+print(weekday_activity)
+
+plt.figure(figsize=(8, 6))
+weekday_activity.plot(kind='bar')
+plt.title('Average Active Employees per Weekday')
+plt.xlabel('Day of the Week')
+plt.ylabel('Average Number of Active Employees')
+plt.show()
+
+# Insight: Helps identify "core days" when office presence is highest, useful for scheduling important meetings or events.
+
+# 4. Work Arrangement vs. Office Usage
+print("\n--- Work Arrangement vs. Office Usage ---")
+work_arrangement_usage = badge_df.groupby(['WORK_LOCATION_1_CODE', 'OFFICE_NUMBER']).size().unstack(fill_value=0)
+print("\nOffice Usage by Primary Work Location:")
+print(work_arrangement_usage)
+
+# Analyze the diagonal (employees using their primary work location) vs. off-diagonal
+total_swipes = work_arrangement_usage.sum().sum()
+on_primary_swipes = np.trace(work_arrangement_usage)
+off_primary_swipes = total_swipes - on_primary_swipes
+print(f"\nPercentage of swipes at primary work location: {(on_primary_swipes / total_swipes) * 100:.2f}%")
+print(f"Percentage of swipes at other locations: {(off_primary_swipes / total_swipes) * 100:.2f}%")
+
+# Insight:  Helps understand if employees are primarily working from their assigned location or are frequently visiting other offices. Can validate work arrangement policies.
+
+# 5. Impact of Grade/Level on Office Choice
+print("\n--- Impact of Grade/Level on Office Choice ---")
+grade_office_preference = badge_df.groupby(['GRADE_EQUIVALENT', 'OFFICE_NUMBER']).size().unstack(fill_value=0)
+print("\nOffice Preference by Grade Level:")
+print(grade_office_preference)
+
+plt.figure(figsize=(12, 8))
+sns.heatmap(grade_office_preference, annot=True, fmt='d', cmap='viridis')
+plt.title('Office Preference by Grade Level')
+plt.xlabel('Office Number')
+plt.ylabel('Grade Equivalent')
+plt.show()
+
+# Insight:  Are certain grade levels more likely to use specific offices? This could be related to team locations, amenities, or other factors.
+
+# 6. Temporal Patterns of Office Entry/Exit (Requires more granular time data - Simulating with day)
+# **Note:** The current data only has the date, so we'll simulate this with the distribution of swipes across days. Ideally, you'd have timestamps.
+print("\n--- Temporal Patterns of Office Usage (Simulated with Daily Distribution) ---")
+daily_swipe_counts = badge_df.groupby(['DATE', 'OFFICE_NUMBER']).size().unstack(fill_value=0)
+daily_swipe_proportion = daily_swipe_counts.apply(lambda x: x / x.sum(), axis=0)
+print("\nProportion of Daily Swipes per Office:")
+print(daily_swipe_proportion.head()) # Showing the first few days
+
+# Insight (with more granular data): Understanding when people enter and leave the office can help optimize resources (e.g., cafeteria, security).
+
+# 7. Co-location Analysis by Team (Cost Center)
+print("\n--- Co-location Analysis by Team (Cost Center) ---")
+# Use the correct case for COST_CENTER_CODE
+team_presence = badge_df.groupby(['DATE', 'OFFICE_NUMBER', 'COST_CENTER_CODE']).size().unstack(fill_value=0)
+
+# Calculate a simple co-location score: number of days at least 2 people from the same cost center are in the same office
+co_location_score = team_presence.groupby(['OFFICE_NUMBER', 'COST_CENTER_CODE']).apply(lambda x: (x >= 2).any().sum())
+print("\nCo-location Score (Days with 2+ people from the same cost center):")
+print(co_location_score)
+
+# Insight: Identifies which teams are frequently co-located in specific offices, informing potential team seating arrangements.
+
+print("\n--- End of Experimental Office Insights ---")
+
+---------------
 error:
 
 KeyError: 'COST_CENTER_CODE'
