@@ -497,3 +497,210 @@ Copy and paste the code into a Databricks notebook cell.
 Run the cell.
 
 This "experimental" script encourages a broader look at the data, moving beyond simple capacity numbers to understand the dynamics of office usage and how it relates to different employee attributes and organizational structures. Remember that the insights gained from these analyses can be powerful tools for making informed decisions about your office environment.
+
+
+--------------
+
+
+import pandas as pd
+
+# SQL query to fetch badge data and join with employee info
+full_query = '''
+SELECT
+  b.date,
+  b.employee_number,
+  b.office_number,
+  l.location_code,
+  o.cost_center_code,
+  pw.work_location_1_code,
+  g.grade_equivalent,
+  j.job_family,
+  j.segment_description,
+  j.management_level,
+  j.segment,
+  o.level_1,
+  o.level_2,
+  o.level_3,
+  o.level_4,
+  l.office_scale,
+  l.location_status,
+  pa.current_days_of_placement,
+  pa.hire_date,
+  pw.home_allocation_percent,
+  CASE 
+    WHEN b.office_number <> pw.work_location_1_code THEN 'Yes'
+    ELSE 'No'
+  END AS IS_VISITOR,
+  CASE 
+    WHEN b.office_number <> l.location_code THEN 'Yes'
+    ELSE 'No'
+  END AS IS_NOT_LOCATION_CODE_OFFICE
+FROM
+  HRDW.REAL_ESTATE.badge_fact b
+LEFT JOIN
+   HRDW.EMPLOYEE_ORG.PERSON_FACT  pf ON pf.person_fact_key = b.person_fact_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.LOCATION l ON pf.location_key = l.location_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.ORGANIZATION o ON o.org_key = pf.org_key 
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_WORK_ARRANGEMENTS pw ON pw.work_arrangements_key = pf.work_arrangements_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_INFO pi ON pi.person_info_key = pf.person_info_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.GRADE g ON g.grade_key = pf.grade_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.JOB j ON j.job_key = pf.job_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_ASSIGNMENT pa ON pa.assignment_key = pf.assignment_key
+WHERE
+  b.date >= '2024-07-16'
+  AND b.office_number = '0055'
+'''
+
+# Load data using the full query
+badge_spdf = spark.read.format("snowflake") \
+    .options(**sfOptions) \
+    .option("query", full_query) \
+    .option("sfWarehouse", "BIZ_REPORTING_WH") \
+    .load()
+
+# Convert to Pandas DataFrame
+badge_df = badge_spdf.toPandas()
+
+# Display the shape of the DataFrame
+print('Shape of combined data is', badge_df.shape)
+
+# Print the resulting DataFrame
+print(badge_df)
+
+-------
+
+import pandas as pd
+
+# SQL query to fetch badge data and join with employee info
+full_query = '''
+SELECT
+  b.date,
+  b.employee_number,
+  b.office_number,
+  l.location_code,
+  o.cost_center_code,
+  pw.work_location_1_code,
+  g.grade_equivalent,
+  j.job_family,
+  j.segment_description,
+  j.management_level,
+  j.segment,
+  o.level_1,
+  o.level_2,
+  o.level_3,
+  o.level_4,
+  l.office_scale,
+  l.location_status,
+  pa.current_days_of_placement,
+  pa.hire_date,
+  pw.home_allocation_percent,
+  CASE 
+    WHEN b.office_number <> pw.work_location_1_code THEN 'Yes'
+    ELSE 'No'
+  END AS IS_VISITOR,
+  CASE 
+    WHEN b.office_number <> l.location_code THEN 'Yes'
+    ELSE 'No'
+  END AS IS_NOT_LOCATION_CODE_OFFICE
+FROM
+  HRDW.REAL_ESTATE.badge_fact b
+LEFT JOIN
+   HRDW.EMPLOYEE_ORG.PERSON_FACT  pf ON pf.person_fact_key = b.person_fact_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.LOCATION l ON pf.location_key = l.location_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.ORGANIZATION o ON o.org_key = pf.org_key 
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_WORK_ARRANGEMENTS pw ON pw.work_arrangements_key = pf.work_arrangements_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_INFO pi ON pi.person_info_key = pf.person_info_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.GRADE g ON g.grade_key = pf.grade_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.JOB j ON j.job_key = pf.job_key
+LEFT JOIN
+  HRDW.EMPLOYEE_ORG.PERSON_ASSIGNMENT pa ON pa.assignment_key = pf.assignment_key
+WHERE
+  b.date >= '2024-07-16'
+  AND b.office_number = '0055'
+'''
+
+# Load data using the full query
+badge_spdf = spark.read.format("snowflake") \
+    .options(**sfOptions) \
+    .option("query", full_query) \
+    .option("sfWarehouse", "BIZ_REPORTING_WH") \
+    .load()
+
+# Convert to Pandas DataFrame
+badge_df = badge_spdf.toPandas()
+
+# Display the shape of the DataFrame
+print('Shape of combined data is', badge_df.shape)
+
+# Print the resulting DataFrame
+print(badge_df)
+
+error:
+
+KeyError: 'COST_CENTER_CODE'
+File <command-3554586944580855>, line 110
+    107 team_presence = badge_df.groupby(['DATE', 'OFFICE_NUMBER', 'COST_CENTER_CODE']).size().unstack(fill_value=0)
+    109 # Calculate a simple co-location score: number of days at least 2 people from the same cost center are in the same office
+--> 110 co_location_score = team_presence.groupby(['OFFICE_NUMBER', 'COST_CENTER_CODE']).apply(lambda x: (x >= 2).any().sum())
+    111 print("\nCo-location Score (Days with 2+ people from the same cost center):")
+    112 print(co_location_score)
+File /databricks/python/lib/python3.12/site-packages/pandas/core/frame.py:8402, in DataFrame.groupby(self, by, axis, level, as_index, sort, group_keys, squeeze, observed, dropna)
+   8399     raise TypeError("You have to supply one of 'by' and 'level'")
+   8400 axis = self._get_axis_number(axis)
+-> 8402 return DataFrameGroupBy(
+   8403     obj=self,
+   8404     keys=by,
+   8405     axis=axis,
+   8406     level=level,
+   8407     as_index=as_index,
+   8408     sort=sort,
+   8409     group_keys=group_keys,
+   8410     squeeze=squeeze,
+   8411     observed=observed,
+   8412     dropna=dropna,
+   8413 )
+File /databricks/python/lib/python3.12/site-packages/pandas/core/groupby/groupby.py:965, in GroupBy.__init__(self, obj, keys, axis, level, grouper, exclusions, selection, as_index, sort, group_keys, squeeze, observed, mutated, dropna)
+    962 if grouper is None:
+    963     from pandas.core.groupby.grouper import get_grouper
+--> 965     grouper, exclusions, obj = get_grouper(
+    966         obj,
+    967         keys,
+    968         axis=axis,
+    969         level=level,
+    970         sort=sort,
+    971         observed=observed,
+    972         mutated=self.mutated,
+    973         dropna=self.dropna,
+    974     )
+    976 self.obj = obj
+    977 self.axis = obj._get_axis_number(axis)
+File /databricks/python/lib/python3.12/site-packages/pandas/core/groupby/grouper.py:888, in get_grouper(obj, key, axis, level, sort, observed, mutated, validate, dropna)
+    886         in_axis, level, gpr = False, gpr, None
+    887     else:
+--> 888         raise KeyError(gpr)
+    889 elif isinstance(gpr, Grouper) and gpr.key is not None:
+    890     # Add key to exclusions
+    891     exclusions.add(gpr.key)
+
+print("Columns in team_presence:", badge_df.columns)
+
+Columns in team_presence: Index(['DATE', 'EMPLOYEE_NUMBER', 'OFFICE_NUMBER', 'LOCATION_CODE',
+       'COST_CENTER_CODE', 'WORK_LOCATION_1_CODE', 'GRADE_EQUIVALENT',
+       'JOB_FAMILY', 'SEGMENT_DESCRIPTION', 'MANAGEMENT_LEVEL', 'SEGMENT',
+       'LEVEL_1', 'LEVEL_2', 'LEVEL_3', 'LEVEL_4', 'OFFICE_SCALE',
+       'LOCATION_STATUS', 'CURRENT_DAYS_OF_PLACEMENT', 'HIRE_DATE',
+       'HOME_ALLOCATION_PERCENT', 'IS_VISITOR', 'IS_NOT_LOCATION_CODE_OFFICE'],
+      dtype='object')
