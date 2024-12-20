@@ -927,3 +927,51 @@ print("\nCo-location Score (Days with 2+ people from the same cost center):")
 print(co_location_score)
 
 print("\n--- End of Experimental Office Insights ---")
+
+-----
+
+
+KeyError: 'cost_center_code'
+File <command-3554586944580855>, line 93
+     91 # 7. Co-location Analysis by Team (Cost Center)
+     92 print("\n--- Co-location Analysis by Team (Cost Center) ---")
+---> 93 team_presence = badge_df.groupby(['DATE', 'OFFICE_NUMBER', 'cost_center_code']).size().unstack(fill_value=0)
+     95 # Calculate a simple co-location score: number of days at least 2 people from the same cost center are in the same office
+     96 co_location_score = team_presence.groupby(['OFFICE_NUMBER', 'cost_center_code']).apply(lambda x: (x >= 2).any().sum())
+File /databricks/python/lib/python3.12/site-packages/pandas/core/frame.py:8402, in DataFrame.groupby(self, by, axis, level, as_index, sort, group_keys, squeeze, observed, dropna)
+   8399     raise TypeError("You have to supply one of 'by' and 'level'")
+   8400 axis = self._get_axis_number(axis)
+-> 8402 return DataFrameGroupBy(
+   8403     obj=self,
+   8404     keys=by,
+   8405     axis=axis,
+   8406     level=level,
+   8407     as_index=as_index,
+   8408     sort=sort,
+   8409     group_keys=group_keys,
+   8410     squeeze=squeeze,
+   8411     observed=observed,
+   8412     dropna=dropna,
+   8413 )
+File /databricks/python/lib/python3.12/site-packages/pandas/core/groupby/groupby.py:965, in GroupBy.__init__(self, obj, keys, axis, level, grouper, exclusions, selection, as_index, sort, group_keys, squeeze, observed, mutated, dropna)
+    962 if grouper is None:
+    963     from pandas.core.groupby.grouper import get_grouper
+--> 965     grouper, exclusions, obj = get_grouper(
+    966         obj,
+    967         keys,
+    968         axis=axis,
+    969         level=level,
+    970         sort=sort,
+    971         observed=observed,
+    972         mutated=self.mutated,
+    973         dropna=self.dropna,
+    974     )
+    976 self.obj = obj
+    977 self.axis = obj._get_axis_number(axis)
+File /databricks/python/lib/python3.12/site-packages/pandas/core/groupby/grouper.py:888, in get_grouper(obj, key, axis, level, sort, observed, mutated, validate, dropna)
+    886         in_axis, level, gpr = False, gpr, None
+    887     else:
+--> 888         raise KeyError(gpr)
+    889 elif isinstance(gpr, Grouper) and gpr.key is not None:
+    890     # Add key to exclusions
+    891     exclusions.add(gpr.key)
