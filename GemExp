@@ -975,3 +975,16 @@ File /databricks/python/lib/python3.12/site-packages/pandas/core/groupby/grouper
     889 elif isinstance(gpr, Grouper) and gpr.key is not None:
     890     # Add key to exclusions
     891     exclusions.add(gpr.key)
+
+
+------
+
+
+# 7. Co-location Analysis by Team (Cost Center)
+print("\n--- Co-location Analysis by Team (Cost Center) ---")
+team_presence = badge_df.groupby(['DATE', 'OFFICE_NUMBER', 'COST_CENTER_CODE']).size().unstack(fill_value=0)
+
+# Calculate a simple co-location score: number of days at least 2 people from the same cost center are in the same office
+co_location_score = team_presence.groupby(['OFFICE_NUMBER', 'COST_CENTER_CODE']).apply(lambda x: (x >= 2).any().sum())
+print("\nCo-location Score (Days with 2+ people from the same cost center):")
+print(co_location_score)
