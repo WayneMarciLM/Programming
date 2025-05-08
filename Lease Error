@@ -1,0 +1,280 @@
+╭─8:02 N0312850@ip-10-235-74-101 ~/Lease 
+╰─$ pip install --index-url https://pypi.org/simple faiss-cpu                                                                                                                                                            7s 
+
+Collecting faiss-cpu
+  Downloading faiss_cpu-1.11.0.tar.gz (70 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 70.2/70.2 kB 7.6 MB/s eta 0:00:00
+  Installing build dependencies ... done
+  Getting requirements to build wheel ... done
+  Preparing metadata (pyproject.toml) ... done
+Collecting numpy<3.0,>=1.25.0
+  Using cached numpy-2.2.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.4 MB)
+Collecting packaging
+  Downloading packaging-25.0-py3-none-any.whl (66 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 66.5/66.5 kB 19.2 MB/s eta 0:00:00
+Building wheels for collected packages: faiss-cpu
+  Building wheel for faiss-cpu (pyproject.toml) ... error
+  error: subprocess-exited-with-error
+  
+  × Building wheel for faiss-cpu (pyproject.toml) did not run successfully.
+  │ exit code: 1
+  ╰─> [105 lines of output]
+      running bdist_wheel
+      running build
+      running build_py
+      running build_ext
+      building 'faiss._swigfaiss' extension
+      swigging faiss/faiss/python/swigfaiss.i to faiss/faiss/python/swigfaiss_wrap.cpp
+      swig -python -c++ -Doverride= -doxygen -Ifaiss -I/tmp/pip-build-env-ah2ytx7r/overlay/lib/python3.10/site-packages/numpy/_core/include -Ifaiss -I/usr/local/include -DSWIGWORDSIZE64 -o faiss/faiss/python/swigfaiss_wrap.cpp faiss/faiss/python/swigfaiss.i
+      faiss/faiss/python/swigfaiss.i:312: Error: Unable to find 'faiss/impl/platform_macros.h'
+      faiss/faiss/python/swigfaiss.i:316: Error: Unable to find 'faiss/utils/ordered_key_value.h'
+      faiss/faiss/python/swigfaiss.i:317: Error: Unable to find 'faiss/utils/Heap.h'
+      faiss/faiss/python/swigfaiss.i:322: Error: Unable to find 'faiss/utils/AlignedTable.h'
+      faiss/faiss/python/swigfaiss.i:323: Error: Unable to find 'faiss/utils/partitioning.h'
+      faiss/faiss/python/swigfaiss.i:324: Error: Unable to find 'faiss/utils/hamming.h'
+      faiss/faiss/python/swigfaiss.i:325: Error: Unable to find 'faiss/utils/hamming_distance/common.h'
+      faiss/faiss/python/swigfaiss.i:505: Error: Unable to find 'faiss/utils/utils.h'
+      faiss/faiss/python/swigfaiss.i:509: Error: Unable to find 'faiss/utils/distances.h'
+      faiss/faiss/python/swigfaiss.i:510: Error: Unable to find 'faiss/utils/random.h'
+      faiss/faiss/python/swigfaiss.i:511: Error: Unable to find 'faiss/utils/sorting.h'
+      faiss/faiss/python/swigfaiss.i:513: Error: Unable to find 'faiss/MetricType.h'
+      faiss/faiss/python/swigfaiss.i:518: Error: Unable to find 'faiss/Index.h'
+      faiss/faiss/python/swigfaiss.i:520: Error: Unable to find 'faiss/impl/DistanceComputer.h'
+      faiss/faiss/python/swigfaiss.i:522: Error: Unable to find 'faiss/impl/io.h'
+      faiss/faiss/python/swigfaiss.i:526: Error: Unable to find 'faiss/impl/maybe_owned_vector.h'
+      faiss/faiss/python/swigfaiss.i:527: Error: Unable to find 'faiss/impl/mapped_io.h'
+      faiss/faiss/python/swigfaiss.i:528: Error: Unable to find 'faiss/impl/zerocopy_io.h'
+      faiss/faiss/python/swigfaiss.i:531: Error: Unable to find 'faiss/IndexFlatCodes.h'
+      faiss/faiss/python/swigfaiss.i:532: Error: Unable to find 'faiss/IndexFlat.h'
+      faiss/faiss/python/swigfaiss.i:533: Error: Unable to find 'faiss/Clustering.h'
+      faiss/faiss/python/swigfaiss.i:535: Error: Unable to find 'faiss/utils/extra_distances.h'
+      faiss/faiss/python/swigfaiss.i:539: Error: Unable to find 'faiss/impl/Quantizer.h'
+      faiss/faiss/python/swigfaiss.i:540: Error: Unable to find 'faiss/impl/ProductQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:541: Error: Unable to find 'faiss/impl/AdditiveQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:542: Error: Unable to find 'faiss/impl/residual_quantizer_encode_steps.h'
+      faiss/faiss/python/swigfaiss.i:543: Error: Unable to find 'faiss/impl/ResidualQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:544: Error: Unable to find 'faiss/impl/LocalSearchQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:545: Error: Unable to find 'faiss/impl/ProductAdditiveQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:546: Error: Unable to find 'faiss/impl/CodePacker.h'
+      faiss/faiss/python/swigfaiss.i:548: Error: Unable to find 'faiss/VectorTransform.h'
+      faiss/faiss/python/swigfaiss.i:549: Error: Unable to find 'faiss/IndexPreTransform.h'
+      faiss/faiss/python/swigfaiss.i:550: Error: Unable to find 'faiss/IndexRefine.h'
+      faiss/faiss/python/swigfaiss.i:551: Error: Unable to find 'faiss/IndexLSH.h'
+      faiss/faiss/python/swigfaiss.i:552: Error: Unable to find 'faiss/impl/PolysemousTraining.h'
+      faiss/faiss/python/swigfaiss.i:553: Error: Unable to find 'faiss/IndexPQ.h'
+      faiss/faiss/python/swigfaiss.i:554: Error: Unable to find 'faiss/IndexAdditiveQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:555: Error: Unable to find 'faiss/impl/io.h'
+      faiss/faiss/python/swigfaiss.i:557: Error: Unable to find 'faiss/invlists/InvertedLists.h'
+      faiss/faiss/python/swigfaiss.i:558: Error: Unable to find 'faiss/invlists/InvertedListsIOHook.h'
+      faiss/faiss/python/swigfaiss.i:560: Error: Unable to find 'faiss/invlists/BlockInvertedLists.h'
+      faiss/faiss/python/swigfaiss.i:561: Error: Unable to find 'faiss/invlists/DirectMap.h'
+      faiss/faiss/python/swigfaiss.i:562: Error: Unable to find 'faiss/IndexIVF.h'
+      faiss/faiss/python/swigfaiss.i:567: Error: Unable to find 'faiss/IVFlib.h'
+      faiss/faiss/python/swigfaiss.i:568: Error: Unable to find 'faiss/impl/ScalarQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:569: Error: Unable to find 'faiss/IndexScalarQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:570: Error: Unable to find 'faiss/IndexIVFSpectralHash.h'
+      faiss/faiss/python/swigfaiss.i:571: Error: Unable to find 'faiss/IndexIVFAdditiveQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:572: Error: Unable to find 'faiss/impl/HNSW.h'
+      faiss/faiss/python/swigfaiss.i:573: Error: Unable to find 'faiss/IndexHNSW.h'
+      faiss/faiss/python/swigfaiss.i:575: Error: Unable to find 'faiss/impl/kmeans1d.h'
+      faiss/faiss/python/swigfaiss.i:578: Error: Unable to find 'faiss/impl/NNDescent.h'
+      faiss/faiss/python/swigfaiss.i:579: Error: Unable to find 'faiss/IndexNNDescent.h'
+      faiss/faiss/python/swigfaiss.i:581: Error: Unable to find 'faiss/IndexIVFFlat.h'
+      faiss/faiss/python/swigfaiss.i:585: Error: Unable to find 'faiss/impl/NSG.h'
+      faiss/faiss/python/swigfaiss.i:596: Error: Unable to find 'faiss/IndexNSG.h'
+      faiss/faiss/python/swigfaiss.i:601: Error: Unable to find 'faiss/invlists/OnDiskInvertedLists.h'
+      faiss/faiss/python/swigfaiss.i:604: Error: Unable to find 'faiss/impl/lattice_Zn.h'
+      faiss/faiss/python/swigfaiss.i:605: Error: Unable to find 'faiss/IndexLattice.h'
+      faiss/faiss/python/swigfaiss.i:608: Error: Unable to find 'faiss/IndexIVFPQ.h'
+      faiss/faiss/python/swigfaiss.i:609: Error: Unable to find 'faiss/IndexIVFPQR.h'
+      faiss/faiss/python/swigfaiss.i:610: Error: Unable to find 'faiss/Index2Layer.h'
+      faiss/faiss/python/swigfaiss.i:612: Error: Unable to find 'faiss/IndexFastScan.h'
+      faiss/faiss/python/swigfaiss.i:613: Error: Unable to find 'faiss/IndexAdditiveQuantizerFastScan.h'
+      faiss/faiss/python/swigfaiss.i:614: Error: Unable to find 'faiss/IndexPQFastScan.h'
+      faiss/faiss/python/swigfaiss.i:619: Error: Unable to find 'faiss/impl/simd_result_handlers.h'
+      faiss/faiss/python/swigfaiss.i:620: Error: Unable to find 'faiss/IndexIVFFastScan.h'
+      faiss/faiss/python/swigfaiss.i:621: Error: Unable to find 'faiss/IndexIVFAdditiveQuantizerFastScan.h'
+      faiss/faiss/python/swigfaiss.i:622: Error: Unable to find 'faiss/IndexIVFIndependentQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:624: Error: Unable to find 'faiss/IndexIVFPQFastScan.h'
+      faiss/faiss/python/swigfaiss.i:625: Error: Unable to find 'faiss/utils/quantize_lut.h'
+      faiss/faiss/python/swigfaiss.i:627: Error: Unable to find 'faiss/IndexBinary.h'
+      faiss/faiss/python/swigfaiss.i:628: Error: Unable to find 'faiss/IndexBinaryFlat.h'
+      faiss/faiss/python/swigfaiss.i:629: Error: Unable to find 'faiss/IndexBinaryIVF.h'
+      faiss/faiss/python/swigfaiss.i:630: Error: Unable to find 'faiss/IndexBinaryFromFloat.h'
+      faiss/faiss/python/swigfaiss.i:631: Error: Unable to find 'faiss/IndexBinaryHNSW.h'
+      faiss/faiss/python/swigfaiss.i:632: Error: Unable to find 'faiss/IndexBinaryHash.h'
+      faiss/faiss/python/swigfaiss.i:634: Error: Unable to find 'faiss/impl/ThreadedIndex.h'
+      faiss/faiss/python/swigfaiss.i:638: Error: Unable to find 'faiss/IndexShards.h'
+      faiss/faiss/python/swigfaiss.i:641: Error: Unable to find 'faiss/IndexShardsIVF.h'
+      faiss/faiss/python/swigfaiss.i:643: Error: Unable to find 'faiss/IndexReplicas.h'
+      faiss/faiss/python/swigfaiss.i:647: Error: Unable to find 'faiss/MetaIndexes.h'
+      faiss/faiss/python/swigfaiss.i:649: Error: Unable to find 'faiss/IndexRowwiseMinMax.h'
+      faiss/faiss/python/swigfaiss.i:651: Error: Unable to find 'faiss/utils/NeuralNet.h'
+      faiss/faiss/python/swigfaiss.i:655: Error: Unable to find 'faiss/IndexNeuralNetCodec.h'
+      faiss/faiss/python/swigfaiss.i:657: Error: Unable to find 'faiss/impl/RaBitQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:658: Error: Unable to find 'faiss/IndexRaBitQ.h'
+      faiss/faiss/python/swigfaiss.i:659: Error: Unable to find 'faiss/IndexIVFRaBitQ.h'
+      faiss/faiss/python/swigfaiss.i:668: Error: Unable to find 'faiss/impl/AuxIndexStructures.h'
+      faiss/faiss/python/swigfaiss.i:669: Error: Unable to find 'faiss/impl/IDSelector.h'
+      faiss/faiss/python/swigfaiss.i:671: Error: Unable to find 'faiss/IndexIDMap.h'
+      faiss/faiss/python/swigfaiss.i:678: Error: Unable to find 'faiss/utils/approx_topk/mode.h'
+      faiss/faiss/python/swigfaiss.i:945: Error: Unable to find 'faiss/index_io.h'
+      faiss/faiss/python/swigfaiss.i:946: Error: Unable to find 'faiss/clone_index.h'
+      faiss/faiss/python/swigfaiss.i:950: Error: Unable to find 'faiss/AutoTune.h'
+      faiss/faiss/python/swigfaiss.i:951: Error: Unable to find 'faiss/index_factory.h'
+      faiss/faiss/python/swigfaiss.i:952: Error: Unable to find 'faiss/MatrixStats.h'
+      error: command '/usr/local/bin/swig' failed with exit code 1
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for faiss-cpu
+Failed to build faiss-cpu
+ERROR: Could not build wheels for faiss-cpu, which is required to install pyproject.toml-based projects
+
+[notice] A new release of pip is available: 23.0.1 -> 25.1.1
+[notice] To update, run: pip install --upgrade pip
+╭─8:07 N0312850@ip-10-235-74-101 ~/Lease 
+╰─$ pip install --upgrade pip                                                                                                                                                                                            6s 
+Looking in indexes: https://repo.forge.lmig.com/api/pypi/python/simple
+Requirement already satisfied: pip in /mnt/N0312850/.pyenv/versions/3.10.11/lib/python3.10/site-packages (23.0.1)
+Collecting pip
+  Downloading https://repo.forge.lmig.com/api/pypi/python/packages/packages/29/a2/d40fb2460e883eca5199c62cfc2463fd261f760556ae6290f88488c362c0/pip-25.1.1-py3-none-any.whl (1.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 125.3 MB/s eta 0:00:00
+Installing collected packages: pip
+  Attempting uninstall: pip
+    Found existing installation: pip 23.0.1
+    Uninstalling pip-23.0.1:
+      Successfully uninstalled pip-23.0.1
+Successfully installed pip-25.1.1
+╭─8:08 N0312850@ip-10-235-74-101 ~/Lease 
+╰─$ pip install --index-url https://pypi.org/simple faiss-cpu                                                                                                                                                            2s 
+
+Collecting faiss-cpu
+  Downloading faiss_cpu-1.11.0.tar.gz (70 kB)
+  Installing build dependencies ... done
+  Getting requirements to build wheel ... done
+  Preparing metadata (pyproject.toml) ... done
+Collecting numpy<3.0,>=1.25.0 (from faiss-cpu)
+  Using cached numpy-2.2.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (62 kB)
+Collecting packaging (from faiss-cpu)
+  Downloading packaging-25.0-py3-none-any.whl.metadata (3.3 kB)
+Using cached numpy-2.2.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (16.4 MB)
+Downloading packaging-25.0-py3-none-any.whl (66 kB)
+Building wheels for collected packages: faiss-cpu
+  Building wheel for faiss-cpu (pyproject.toml) ... error
+  error: subprocess-exited-with-error
+  
+  × Building wheel for faiss-cpu (pyproject.toml) did not run successfully.
+  │ exit code: 1
+  ╰─> [105 lines of output]
+      running bdist_wheel
+      running build
+      running build_py
+      running build_ext
+      building 'faiss._swigfaiss' extension
+      swigging faiss/faiss/python/swigfaiss.i to faiss/faiss/python/swigfaiss_wrap.cpp
+      swig -python -c++ -Doverride= -doxygen -Ifaiss -I/tmp/pip-build-env-v66icam4/overlay/lib/python3.10/site-packages/numpy/_core/include -Ifaiss -I/usr/local/include -DSWIGWORDSIZE64 -o faiss/faiss/python/swigfaiss_wrap.cpp faiss/faiss/python/swigfaiss.i
+      faiss/faiss/python/swigfaiss.i:312: Error: Unable to find 'faiss/impl/platform_macros.h'
+      faiss/faiss/python/swigfaiss.i:316: Error: Unable to find 'faiss/utils/ordered_key_value.h'
+      faiss/faiss/python/swigfaiss.i:317: Error: Unable to find 'faiss/utils/Heap.h'
+      faiss/faiss/python/swigfaiss.i:322: Error: Unable to find 'faiss/utils/AlignedTable.h'
+      faiss/faiss/python/swigfaiss.i:323: Error: Unable to find 'faiss/utils/partitioning.h'
+      faiss/faiss/python/swigfaiss.i:324: Error: Unable to find 'faiss/utils/hamming.h'
+      faiss/faiss/python/swigfaiss.i:325: Error: Unable to find 'faiss/utils/hamming_distance/common.h'
+      faiss/faiss/python/swigfaiss.i:505: Error: Unable to find 'faiss/utils/utils.h'
+      faiss/faiss/python/swigfaiss.i:509: Error: Unable to find 'faiss/utils/distances.h'
+      faiss/faiss/python/swigfaiss.i:510: Error: Unable to find 'faiss/utils/random.h'
+      faiss/faiss/python/swigfaiss.i:511: Error: Unable to find 'faiss/utils/sorting.h'
+      faiss/faiss/python/swigfaiss.i:513: Error: Unable to find 'faiss/MetricType.h'
+      faiss/faiss/python/swigfaiss.i:518: Error: Unable to find 'faiss/Index.h'
+      faiss/faiss/python/swigfaiss.i:520: Error: Unable to find 'faiss/impl/DistanceComputer.h'
+      faiss/faiss/python/swigfaiss.i:522: Error: Unable to find 'faiss/impl/io.h'
+      faiss/faiss/python/swigfaiss.i:526: Error: Unable to find 'faiss/impl/maybe_owned_vector.h'
+      faiss/faiss/python/swigfaiss.i:527: Error: Unable to find 'faiss/impl/mapped_io.h'
+      faiss/faiss/python/swigfaiss.i:528: Error: Unable to find 'faiss/impl/zerocopy_io.h'
+      faiss/faiss/python/swigfaiss.i:531: Error: Unable to find 'faiss/IndexFlatCodes.h'
+      faiss/faiss/python/swigfaiss.i:532: Error: Unable to find 'faiss/IndexFlat.h'
+      faiss/faiss/python/swigfaiss.i:533: Error: Unable to find 'faiss/Clustering.h'
+      faiss/faiss/python/swigfaiss.i:535: Error: Unable to find 'faiss/utils/extra_distances.h'
+      faiss/faiss/python/swigfaiss.i:539: Error: Unable to find 'faiss/impl/Quantizer.h'
+      faiss/faiss/python/swigfaiss.i:540: Error: Unable to find 'faiss/impl/ProductQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:541: Error: Unable to find 'faiss/impl/AdditiveQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:542: Error: Unable to find 'faiss/impl/residual_quantizer_encode_steps.h'
+      faiss/faiss/python/swigfaiss.i:543: Error: Unable to find 'faiss/impl/ResidualQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:544: Error: Unable to find 'faiss/impl/LocalSearchQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:545: Error: Unable to find 'faiss/impl/ProductAdditiveQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:546: Error: Unable to find 'faiss/impl/CodePacker.h'
+      faiss/faiss/python/swigfaiss.i:548: Error: Unable to find 'faiss/VectorTransform.h'
+      faiss/faiss/python/swigfaiss.i:549: Error: Unable to find 'faiss/IndexPreTransform.h'
+      faiss/faiss/python/swigfaiss.i:550: Error: Unable to find 'faiss/IndexRefine.h'
+      faiss/faiss/python/swigfaiss.i:551: Error: Unable to find 'faiss/IndexLSH.h'
+      faiss/faiss/python/swigfaiss.i:552: Error: Unable to find 'faiss/impl/PolysemousTraining.h'
+      faiss/faiss/python/swigfaiss.i:553: Error: Unable to find 'faiss/IndexPQ.h'
+      faiss/faiss/python/swigfaiss.i:554: Error: Unable to find 'faiss/IndexAdditiveQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:555: Error: Unable to find 'faiss/impl/io.h'
+      faiss/faiss/python/swigfaiss.i:557: Error: Unable to find 'faiss/invlists/InvertedLists.h'
+      faiss/faiss/python/swigfaiss.i:558: Error: Unable to find 'faiss/invlists/InvertedListsIOHook.h'
+      faiss/faiss/python/swigfaiss.i:560: Error: Unable to find 'faiss/invlists/BlockInvertedLists.h'
+      faiss/faiss/python/swigfaiss.i:561: Error: Unable to find 'faiss/invlists/DirectMap.h'
+      faiss/faiss/python/swigfaiss.i:562: Error: Unable to find 'faiss/IndexIVF.h'
+      faiss/faiss/python/swigfaiss.i:567: Error: Unable to find 'faiss/IVFlib.h'
+      faiss/faiss/python/swigfaiss.i:568: Error: Unable to find 'faiss/impl/ScalarQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:569: Error: Unable to find 'faiss/IndexScalarQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:570: Error: Unable to find 'faiss/IndexIVFSpectralHash.h'
+      faiss/faiss/python/swigfaiss.i:571: Error: Unable to find 'faiss/IndexIVFAdditiveQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:572: Error: Unable to find 'faiss/impl/HNSW.h'
+      faiss/faiss/python/swigfaiss.i:573: Error: Unable to find 'faiss/IndexHNSW.h'
+      faiss/faiss/python/swigfaiss.i:575: Error: Unable to find 'faiss/impl/kmeans1d.h'
+      faiss/faiss/python/swigfaiss.i:578: Error: Unable to find 'faiss/impl/NNDescent.h'
+      faiss/faiss/python/swigfaiss.i:579: Error: Unable to find 'faiss/IndexNNDescent.h'
+      faiss/faiss/python/swigfaiss.i:581: Error: Unable to find 'faiss/IndexIVFFlat.h'
+      faiss/faiss/python/swigfaiss.i:585: Error: Unable to find 'faiss/impl/NSG.h'
+      faiss/faiss/python/swigfaiss.i:596: Error: Unable to find 'faiss/IndexNSG.h'
+      faiss/faiss/python/swigfaiss.i:601: Error: Unable to find 'faiss/invlists/OnDiskInvertedLists.h'
+      faiss/faiss/python/swigfaiss.i:604: Error: Unable to find 'faiss/impl/lattice_Zn.h'
+      faiss/faiss/python/swigfaiss.i:605: Error: Unable to find 'faiss/IndexLattice.h'
+      faiss/faiss/python/swigfaiss.i:608: Error: Unable to find 'faiss/IndexIVFPQ.h'
+      faiss/faiss/python/swigfaiss.i:609: Error: Unable to find 'faiss/IndexIVFPQR.h'
+      faiss/faiss/python/swigfaiss.i:610: Error: Unable to find 'faiss/Index2Layer.h'
+      faiss/faiss/python/swigfaiss.i:612: Error: Unable to find 'faiss/IndexFastScan.h'
+      faiss/faiss/python/swigfaiss.i:613: Error: Unable to find 'faiss/IndexAdditiveQuantizerFastScan.h'
+      faiss/faiss/python/swigfaiss.i:614: Error: Unable to find 'faiss/IndexPQFastScan.h'
+      faiss/faiss/python/swigfaiss.i:619: Error: Unable to find 'faiss/impl/simd_result_handlers.h'
+      faiss/faiss/python/swigfaiss.i:620: Error: Unable to find 'faiss/IndexIVFFastScan.h'
+      faiss/faiss/python/swigfaiss.i:621: Error: Unable to find 'faiss/IndexIVFAdditiveQuantizerFastScan.h'
+      faiss/faiss/python/swigfaiss.i:622: Error: Unable to find 'faiss/IndexIVFIndependentQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:624: Error: Unable to find 'faiss/IndexIVFPQFastScan.h'
+      faiss/faiss/python/swigfaiss.i:625: Error: Unable to find 'faiss/utils/quantize_lut.h'
+      faiss/faiss/python/swigfaiss.i:627: Error: Unable to find 'faiss/IndexBinary.h'
+      faiss/faiss/python/swigfaiss.i:628: Error: Unable to find 'faiss/IndexBinaryFlat.h'
+      faiss/faiss/python/swigfaiss.i:629: Error: Unable to find 'faiss/IndexBinaryIVF.h'
+      faiss/faiss/python/swigfaiss.i:630: Error: Unable to find 'faiss/IndexBinaryFromFloat.h'
+      faiss/faiss/python/swigfaiss.i:631: Error: Unable to find 'faiss/IndexBinaryHNSW.h'
+      faiss/faiss/python/swigfaiss.i:632: Error: Unable to find 'faiss/IndexBinaryHash.h'
+      faiss/faiss/python/swigfaiss.i:634: Error: Unable to find 'faiss/impl/ThreadedIndex.h'
+      faiss/faiss/python/swigfaiss.i:638: Error: Unable to find 'faiss/IndexShards.h'
+      faiss/faiss/python/swigfaiss.i:641: Error: Unable to find 'faiss/IndexShardsIVF.h'
+      faiss/faiss/python/swigfaiss.i:643: Error: Unable to find 'faiss/IndexReplicas.h'
+      faiss/faiss/python/swigfaiss.i:647: Error: Unable to find 'faiss/MetaIndexes.h'
+      faiss/faiss/python/swigfaiss.i:649: Error: Unable to find 'faiss/IndexRowwiseMinMax.h'
+      faiss/faiss/python/swigfaiss.i:651: Error: Unable to find 'faiss/utils/NeuralNet.h'
+      faiss/faiss/python/swigfaiss.i:655: Error: Unable to find 'faiss/IndexNeuralNetCodec.h'
+      faiss/faiss/python/swigfaiss.i:657: Error: Unable to find 'faiss/impl/RaBitQuantizer.h'
+      faiss/faiss/python/swigfaiss.i:658: Error: Unable to find 'faiss/IndexRaBitQ.h'
+      faiss/faiss/python/swigfaiss.i:659: Error: Unable to find 'faiss/IndexIVFRaBitQ.h'
+      faiss/faiss/python/swigfaiss.i:668: Error: Unable to find 'faiss/impl/AuxIndexStructures.h'
+      faiss/faiss/python/swigfaiss.i:669: Error: Unable to find 'faiss/impl/IDSelector.h'
+      faiss/faiss/python/swigfaiss.i:671: Error: Unable to find 'faiss/IndexIDMap.h'
+      faiss/faiss/python/swigfaiss.i:678: Error: Unable to find 'faiss/utils/approx_topk/mode.h'
+      faiss/faiss/python/swigfaiss.i:945: Error: Unable to find 'faiss/index_io.h'
+      faiss/faiss/python/swigfaiss.i:946: Error: Unable to find 'faiss/clone_index.h'
+      faiss/faiss/python/swigfaiss.i:950: Error: Unable to find 'faiss/AutoTune.h'
+      faiss/faiss/python/swigfaiss.i:951: Error: Unable to find 'faiss/index_factory.h'
+      faiss/faiss/python/swigfaiss.i:952: Error: Unable to find 'faiss/MatrixStats.h'
+      error: command '/usr/local/bin/swig' failed with exit code 1
+      [end of output]
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for faiss-cpu
+Failed to build faiss-cpu
+ERROR: Failed to build installable wheels for some pyproject.toml based projects (faiss-cpu)
